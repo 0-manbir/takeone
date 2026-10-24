@@ -1,17 +1,36 @@
-# takeone
+# TakeOne
 
-A new Flutter project.
+TakeOne is an offline-first digital clapboard for Android, built with Flutter.
+Projects, slate setup, and take history are stored locally in SQLite; appearance
+preferences are stored on the device.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+- Create and manage production projects with director, DOP, date, location, and notes.
+- Configure roll, scene, shot, take, frame rate, slate field labels, order, visibility,
+  and text size for each project.
+- Use the full-screen landscape slate to clap, capture timecode, and rate takes.
+- Advance takes, move to the next shot or scene, and record test takes without
+  changing the normal take counter.
+- Review, filter, edit, and delete take history.
+- Export project details and take logs to a shareable PDF.
+- Choose cinematic, dark, or light themes, accent colors, and typefaces.
 
-A few resources to get you started if this is your first Flutter project:
+## Run
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+```sh
+flutter pub get
+flutter run
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Build a debug APK with:
+
+```sh
+flutter build apk --debug
+```
+
+Run the Android workflow test on a connected device with:
+
+```sh
+flutter test integration_test/app_test.dart -d <device-id>
+```
