@@ -7,7 +7,7 @@ preferences are stored on the device.
 ## Features
 
 - Create and manage production projects with director, DOP, date, location, and notes.
-- Configure roll, scene, shot, take, frame rate, slate field labels, order, visibility,
+- Configure roll, scene, shot, take, slate field labels, order, visibility,
   and text size for each project.
 - Use the full-screen landscape slate to clap, capture timecode, and rate takes.
 - Advance takes, move to the next shot or scene, and record test takes without

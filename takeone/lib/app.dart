@@ -228,146 +228,89 @@ class HomeScreen extends StatelessWidget {
               error: controller.loadError!,
               onRetry: controller.initialize,
             )
-          : RefreshIndicator(
-              onRefresh: controller.refresh,
-              child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(22, 18, 22, 32),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        Row(
-                          children: [
-                            Container(
-                              height: 43,
-                              width: 43,
-                              decoration: BoxDecoration(
-                                color: Color(
-                                  controller.accent,
-                                ).withValues(alpha: .14),
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Icon(
-                                Icons.movie_creation_outlined,
-                                color: Color(controller.accent),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'TAKEONE',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      letterSpacing: 2.4,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                  SizedBox(height: 3),
-                                  Text(
-                                    'Production desk',
-                                    style: TextStyle(
-                                      color: _muted,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              tooltip: 'Appearance',
-                              onPressed: () =>
-                                  _showAppearance(context, controller),
-                              icon: const Icon(Icons.tune_rounded),
-                            ),
-                          ],
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 18, 22, 0),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Projects',
+                        style: TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w700,
                         ),
-                        const SizedBox(height: 31),
-                        _OverviewCard(projects: controller.projects),
-                        const SizedBox(height: 30),
-                        Row(
-                          children: [
-                            const Expanded(
-                              child: Text(
-                                'Projects',
-                                style: TextStyle(
-                                  fontSize: 19,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              '${controller.projects.length}',
-                              style: const TextStyle(
-                                color: _muted,
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            FilledButton.icon(
-                              onPressed: () => _createProject(context),
-                              icon: const Icon(Icons.add, size: 18),
-                              label: const Text('New project'),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: Color(controller.accent),
-                                foregroundColor: const Color(0xFF191712),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 11,
-                                ),
-                              ),
-                            ),
-                          ],
+                      ),
+                      const SizedBox(width: 7),
+                      Text(
+                        '[${controller.projects.length}]',
+                        style: const TextStyle(color: _muted, fontSize: 13),
+                      ),
+                      const Spacer(),
+                      FilledButton.icon(
+                        onPressed: () => _createProject(context),
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('New project'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Color(controller.accent),
+                          foregroundColor: const Color(0xFF191712),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 11,
+                          ),
                         ),
-                        const SizedBox(height: 13),
-                        if (controller.projects.isEmpty)
-                          _EmptyProjects(
+                      ),
+                      IconButton(
+                        tooltip: 'Appearance',
+                        onPressed: () => _showAppearance(context, controller),
+                        icon: const Icon(Icons.tune_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 13),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: controller.refresh,
+                    child: ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(22, 0, 22, 32),
+                      itemCount: controller.projects.isEmpty
+                          ? 1
+                          : controller.projects.length,
+                      itemBuilder: (context, index) {
+                        if (controller.projects.isEmpty) {
+                          return _EmptyProjects(
                             onCreate: () => _createProject(context),
-                          )
-                        else
-                          ...controller.projects.map(
-                            (project) => Padding(
-                              padding: const EdgeInsets.only(bottom: 11),
-                              child: _ProjectCard(
-                                project: project,
-                                accent: Color(controller.accent),
-                                onOpen: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => ProjectWorkspace(
-                                      controller: controller,
-                                      projectId: project.id,
-                                    ),
-                                  ),
-                                ),
-                                onEdit: () => _editProject(context, project),
-                                onDelete: () => _confirmDeleteProject(
-                                  context,
-                                  controller,
-                                  project,
+                          );
+                        }
+                        final project = controller.projects[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 11),
+                          child: _ProjectCard(
+                            project: project,
+                            accent: Color(controller.accent),
+                            onOpen: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ProjectWorkspace(
+                                  controller: controller,
+                                  projectId: project.id,
                                 ),
                               ),
                             ),
-                          ),
-                        const SizedBox(height: 10),
-                        const Center(
-                          child: Text(
-                            'MADE FOR THE MOMENT BEFORE ACTION',
-                            style: TextStyle(
-                              color: _muted,
-                              fontSize: 9,
-                              letterSpacing: 1.8,
-                              fontWeight: FontWeight.w700,
+                            onEdit: () => _editProject(context, project),
+                            onDelete: () => _confirmDeleteProject(
+                              context,
+                              controller,
+                              project,
                             ),
                           ),
-                        ),
-                      ]),
+                        );
+                      },
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
     ),
   );
@@ -463,16 +406,16 @@ class _ProjectCard extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 15, 12, 15),
         child: Row(
           children: [
-            Container(
-              width: 46,
-              height: 51,
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: .12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(Icons.movie_outlined, color: accent, size: 23),
-            ),
-            const SizedBox(width: 13),
+            // Container(
+            //   width: 46,
+            //   height: 51,
+            //   decoration: BoxDecoration(
+            //     color: accent.withValues(alpha: .12),
+            //     borderRadius: BorderRadius.circular(12),
+            //   ),
+            //   child: Icon(Icons.movie_outlined, color: accent, size: 23),
+            // ),
+            const SizedBox(width: 8),
             Expanded(
               flex: 3,
               child: Column(
@@ -490,8 +433,7 @@ class _ProjectCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     [
-                      if (project.director.isNotEmpty)
-                        'Dir. ${project.director}',
+                      if (project.director.isNotEmpty) project.director,
                       project.productionDate,
                     ].join('  ·  '),
                     maxLines: 1,
@@ -512,12 +454,12 @@ class _ProjectCard extends StatelessWidget {
               ],
               icon: const Icon(Icons.more_horiz_rounded, color: _muted),
             ),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: .4),
-            ),
+            // Icon(
+            //   Icons.chevron_right_rounded,
+            //   color: Theme.of(
+            //     context,
+            //   ).colorScheme.onSurface.withValues(alpha: .4),
+            // ),
           ],
         ),
       ),
@@ -538,22 +480,7 @@ class _EmptyProjects extends StatelessWidget {
         children: [
           const Icon(Icons.movie_filter_outlined, color: _gold, size: 34),
           const SizedBox(height: 13),
-          const Text(
-            'Your next production starts here',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 7),
-          const Text(
-            'Create a project to set up your first slate.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: _muted, fontSize: 12),
-          ),
-          const SizedBox(height: 15),
-          TextButton.icon(
-            onPressed: onCreate,
-            icon: const Icon(Icons.add),
-            label: const Text('Create a project'),
-          ),
+          const Text('Create a project to get started'),
         ],
       ),
     ),
@@ -685,7 +612,6 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
       scene: old?.scene ?? '1',
       shot: old?.shot ?? '1',
       take: old?.take ?? 1,
-      frameRate: old?.frameRate ?? 24,
       soundEnabled: old?.soundEnabled ?? true,
       fields: old?.fields ?? FilmProject.defaultSlateFields,
     );
@@ -701,7 +627,12 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
         icon: const Icon(Icons.close_rounded),
       ),
       actions: [
-        TextButton(onPressed: _save, child: const Text('Save')),
+        TextButton(
+          onPressed: _save,
+          child: Text(
+            widget.project == null ? 'Create project' : 'Save changes',
+          ),
+        ),
         const SizedBox(width: 8),
       ],
     ),
@@ -710,16 +641,11 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(22, 10, 22, 30),
         children: [
-          const _SectionEyebrow('PRODUCTION DETAILS'),
-          const SizedBox(height: 13),
           TextFormField(
             controller: _name,
             autofocus: widget.project == null,
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(
-              labelText: 'Project name *',
-              hintText: 'e.g. The Last Light',
-            ),
+            decoration: const InputDecoration(labelText: 'Project name *'),
             validator: (value) => value == null || value.trim().isEmpty
                 ? 'Project name is required'
                 : null,
@@ -767,16 +693,16 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
           _EditorField(controller: _location, label: 'Location'),
           const SizedBox(height: 12),
           _EditorField(controller: _notes, label: 'Production notes', lines: 3),
-          const SizedBox(height: 25),
-          FilledButton(
-            onPressed: _save,
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 15),
-            ),
-            child: Text(
-              widget.project == null ? 'Create project' : 'Save changes',
-            ),
-          ),
+          // const SizedBox(height: 25),
+          // FilledButton(
+          //   onPressed: _save,
+          //   style: FilledButton.styleFrom(
+          //     padding: const EdgeInsets.symmetric(vertical: 15),
+          //   ),
+          //   child: Text(
+          //     widget.project == null ? 'Create project' : 'Save changes',
+          //   ),
+          // ),
         ],
       ),
     ),
@@ -857,7 +783,7 @@ class _ProjectWorkspaceState extends State<ProjectWorkspace> {
                 ),
               ),
               Text(
-                '${project.productionDate}  ·  ${project.frameRate} FPS',
+                project.productionDate,
                 style: const TextStyle(
                   color: _muted,
                   fontSize: 10,
@@ -1103,7 +1029,7 @@ class SlatePreview extends StatelessWidget {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            '${project.frameRate} FPS  ·  00:00:00:00',
+                            '00:00:00',
                             style: const TextStyle(
                               color: Colors.white60,
                               fontSize: 10,
@@ -1324,14 +1250,13 @@ class _ProjectSetupViewState extends State<ProjectSetupView> {
     super.dispose();
   }
 
-  Future<void> _save({List<SlateField>? fields, double? frameRate}) async {
+  Future<void> _save({List<SlateField>? fields}) async {
     await widget.controller.saveProject(
       widget.project.copyWith(
         roll: _roll.text.trim().isEmpty ? 'A001' : _roll.text.trim(),
         scene: _scene.text.trim().isEmpty ? '1' : _scene.text.trim(),
         shot: _shot.text.trim().isEmpty ? '1' : _shot.text.trim(),
         fields: fields ?? _fields,
-        frameRate: frameRate,
       ),
     );
   }
@@ -1370,34 +1295,6 @@ class _ProjectSetupViewState extends State<ProjectSetupView> {
         ],
       ),
       const SizedBox(height: 12),
-      Card(
-        child: ListTile(
-          title: const Text(
-            'Frame rate',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          ),
-          subtitle: const Text(
-            'Timecode frame count',
-            style: TextStyle(color: _muted, fontSize: 11),
-          ),
-          trailing: DropdownButton<double>(
-            value: [23.976, 24.0, 25.0, 30.0].contains(widget.project.frameRate)
-                ? widget.project.frameRate
-                : 24,
-            underline: const SizedBox.shrink(),
-            items: const [23.976, 24.0, 25.0, 30.0]
-                .map(
-                  (rate) =>
-                      DropdownMenuItem(value: rate, child: Text('$rate FPS')),
-                )
-                .toList(),
-            onChanged: (value) {
-              if (value != null) _save(frameRate: value);
-            },
-          ),
-        ),
-      ),
-      const SizedBox(height: 25),
       Row(
         children: [
           const Expanded(child: _SectionEyebrow('SLATE FIELDS')),
@@ -1693,46 +1590,6 @@ class _TakeHistoryViewState extends State<TakeHistoryView> {
         }).toList();
         return Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 0, 18, 13),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${all.length} recorded takes',
-                      style: const TextStyle(color: _muted, fontSize: 12),
-                    ),
-                  ),
-                  PopupMenuButton<String>(
-                    onSelected: (value) async {
-                      if (value == 'pdf') {
-                        await _exportProject(
-                          context,
-                          widget.controller,
-                          widget.project,
-                        );
-                      }
-                    },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(
-                        value: 'pdf',
-                        child: Text('Export take log PDF'),
-                      ),
-                    ],
-                    child: const Padding(
-                      padding: EdgeInsets.all(7),
-                      child: Row(
-                        children: [
-                          Icon(Icons.ios_share, size: 15),
-                          SizedBox(width: 6),
-                          Text('Export', style: TextStyle(fontSize: 11)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
             SizedBox(
               height: 37,
               child: ListView(
@@ -2136,9 +1993,7 @@ class _ClapboardScreenState extends State<ClapboardScreen>
   }
 
   String get _timecode {
-    final fps = (project?.frameRate ?? 24).round();
-    final frame = (_now.millisecond / 1000 * fps).floor().clamp(0, fps - 1);
-    return '${_two(_now.hour)}:${_two(_now.minute)}:${_two(_now.second)}:${_two(frame)}';
+    return '${_two(_now.hour)}:${_two(_now.minute)}:${_two(_now.second)}';
   }
 
   Future<void> _clap() async {
@@ -2161,57 +2016,68 @@ class _ClapboardScreenState extends State<ClapboardScreen>
     await Future<void>.delayed(const Duration(milliseconds: 180));
     if (mounted) setState(() => _clapping = false);
     if (!mounted) return;
-    final rating = await showModalBottomSheet<TakeRating>(
+    final rating = await showDialog<TakeRating>(
       context: context,
-      backgroundColor: const Color(0xFF20221F),
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 4, 18, 22),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Log this take',
-                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Scene ${activeProject.scene}  ·  Shot ${activeProject.shot}  ·  Take ${activeProject.take}',
-                  style: const TextStyle(color: _muted, fontSize: 12),
-                ),
-                const SizedBox(height: 14),
-                _RatingAction(
-                  label: 'Bad take',
-                  subtitle: 'Save it and prepare for a retake',
-                  icon: Icons.close_rounded,
-                  color: const Color(0xFFE1786B),
-                  onTap: () => Navigator.pop(context, TakeRating.bad),
-                ),
-                _RatingAction(
-                  label: 'Good take — One more',
-                  subtitle: 'Save it and roll the next take',
-                  icon: Icons.replay_rounded,
-                  color: const Color(0xFF68C991),
-                  onTap: () => Navigator.pop(context, TakeRating.good),
-                ),
-                _RatingAction(
-                  label: 'Good take — Moving on',
-                  subtitle: 'Save it and move to another setup',
-                  icon: Icons.skip_next_rounded,
-                  color: const Color(0xFF68C991),
-                  onTap: () => Navigator.pop(context, TakeRating.movingOn),
-                ),
-                _RatingAction(
-                  label: 'Test take',
-                  subtitle: 'Save without changing take numbering',
-                  icon: Icons.science_outlined,
-                  color: const Color(0xFF80A9E8),
-                  onTap: () => Navigator.pop(context, TakeRating.test),
-                ),
-              ],
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: Dialog.fullscreen(
+          backgroundColor: const Color(0xFF111210),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Text(
+                      'Scene ${activeProject.scene}  ·  Shot ${activeProject.shot}  ·  Take ${activeProject.take}',
+                      style: const TextStyle(color: _muted, fontSize: 14),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    flex: 3,
+                    child: GridView.count(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                      childAspectRatio: 2.5,
+                      children: [
+                        _RatingAction(
+                          label: 'Bad take',
+                          subtitle: 'Save and retake',
+                          icon: Icons.close_rounded,
+                          color: const Color.fromARGB(255, 231, 140, 127),
+                          onTap: () => Navigator.pop(context, TakeRating.bad),
+                        ),
+                        _RatingAction(
+                          label: 'Good take',
+                          subtitle: 'Need retake',
+                          icon: Icons.replay_rounded,
+                          color: const Color.fromARGB(255, 190, 190, 98),
+                          onTap: () => Navigator.pop(context, TakeRating.good),
+                        ),
+                        _RatingAction(
+                          label: 'Moving on',
+                          subtitle: 'Move to next shot',
+                          icon: Icons.skip_next_rounded,
+                          color: const Color.fromARGB(255, 120, 212, 159),
+                          onTap: () =>
+                              Navigator.pop(context, TakeRating.movingOn),
+                        ),
+                        _RatingAction(
+                          label: 'Test take',
+                          subtitle: 'Don\'t count it',
+                          icon: Icons.science_outlined,
+                          color: const Color.fromARGB(255, 167, 167, 167),
+                          onTap: () => Navigator.pop(context, TakeRating.test),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -2275,7 +2141,7 @@ class _ClapboardScreenState extends State<ClapboardScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${_ratingLabel(rating)} take saved'),
-            duration: const Duration(seconds: 2),
+            duration: const Duration(milliseconds: 500),
           ),
         );
       }
@@ -2324,29 +2190,6 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        const Text(
-                          'SCENE SLATE',
-                          style: TextStyle(
-                            color: _muted,
-                            letterSpacing: 1.5,
-                            fontSize: 8,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '${activeProject.frameRate} FPS',
-                          style: TextStyle(
-                            color: Color(widget.controller.accent),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
                     Expanded(
                       child: Wrap(
                         spacing: 10,
@@ -2483,16 +2326,6 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                   takeStepper,
                   SizedBox(height: large ? 13 : 6),
                   clapButton,
-                  const SizedBox(height: 6),
-                  const Text(
-                    'TAP TO MARK & LOG TAKE',
-                    style: TextStyle(
-                      color: _muted,
-                      fontSize: 7,
-                      letterSpacing: 1,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
                 ],
               );
               return Stack(
@@ -2545,14 +2378,6 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                                   fontSize: large ? 12 : 10,
                                 ),
                               ),
-                            ),
-                            _StatusTag(
-                              label: activeProject.soundEnabled
-                                  ? 'SOUND ON'
-                                  : 'SOUND OFF',
-                              color: activeProject.soundEnabled
-                                  ? const Color(0xFF68C991)
-                                  : _muted,
                             ),
                           ],
                         ),
@@ -2616,16 +2441,6 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                                 child: _BottomMeta(
                                   label: 'DOP',
                                   value: activeProject.dop,
-                                ),
-                              ),
-                              const Spacer(),
-                              const Text(
-                                'TAKEONE  ·  DIGITAL SLATE',
-                                style: TextStyle(
-                                  color: Colors.white38,
-                                  fontSize: 8,
-                                  letterSpacing: 1.2,
-                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ],
@@ -2737,26 +2552,54 @@ class _RatingAction extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    contentPadding: EdgeInsets.zero,
-    leading: Container(
-      height: 38,
-      width: 38,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: .12),
-        borderRadius: BorderRadius.circular(11),
+  Widget build(BuildContext context) => Card(
+    color: color.withValues(alpha: .1),
+    elevation: 0,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: .45)),
+        ),
+        padding: const EdgeInsets.all(8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 36),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: .65),
+                    fontSize: 16,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-      child: Icon(icon, color: color, size: 19),
     ),
-    title: Text(
-      label,
-      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-    ),
-    subtitle: Text(
-      subtitle,
-      style: const TextStyle(color: _muted, fontSize: 10),
-    ),
-    onTap: onTap,
   );
 }
 
@@ -2856,7 +2699,6 @@ Future<void> _exportProject(
                 _pdfInfo('DIRECTOR', project.director),
                 _pdfInfo('DIRECTOR OF PHOTOGRAPHY', project.dop),
                 _pdfInfo('LOCATION', project.location),
-                _pdfInfo('FRAME RATE', '${project.frameRate} FPS'),
               ],
             ),
           ),

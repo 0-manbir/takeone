@@ -21,31 +21,34 @@ class SlateField {
   final bool visible;
   final double size;
 
-  SlateField copyWith(
-          {String? label, String? value, bool? visible, double? size}) =>
-      SlateField(
-        id: id,
-        label: label ?? this.label,
-        value: value ?? this.value,
-        visible: visible ?? this.visible,
-        size: size ?? this.size,
-      );
+  SlateField copyWith({
+    String? label,
+    String? value,
+    bool? visible,
+    double? size,
+  }) => SlateField(
+    id: id,
+    label: label ?? this.label,
+    value: value ?? this.value,
+    visible: visible ?? this.visible,
+    size: size ?? this.size,
+  );
 
   Map<String, Object?> toMap() => {
-        'id': id,
-        'label': label,
-        'value': value,
-        'visible': visible,
-        'size': size,
-      };
+    'id': id,
+    'label': label,
+    'value': value,
+    'visible': visible,
+    'size': size,
+  };
 
   factory SlateField.fromMap(Map<String, dynamic> map) => SlateField(
-        id: map['id'] as String,
-        label: map['label'] as String,
-        value: map['value'] as String? ?? '',
-        visible: map['visible'] as bool? ?? true,
-        size: (map['size'] as num?)?.toDouble() ?? 1,
-      );
+    id: map['id'] as String,
+    label: map['label'] as String,
+    value: map['value'] as String? ?? '',
+    visible: map['visible'] as bool? ?? true,
+    size: (map['size'] as num?)?.toDouble() ?? 1,
+  );
 }
 
 class FilmProject {
@@ -61,7 +64,6 @@ class FilmProject {
     this.scene = '1',
     this.shot = '1',
     this.take = 1,
-    this.frameRate = 24,
     this.soundEnabled = true,
     this.fields = defaultSlateFields,
   });
@@ -77,7 +79,6 @@ class FilmProject {
   final String scene;
   final String shot;
   final int take;
-  final double frameRate;
   final bool soundEnabled;
   final List<SlateField> fields;
 
@@ -99,64 +100,62 @@ class FilmProject {
     String? scene,
     String? shot,
     int? take,
-    double? frameRate,
     bool? soundEnabled,
     List<SlateField>? fields,
-  }) =>
-      FilmProject(
-        id: id,
-        name: name ?? this.name,
-        productionDate: productionDate ?? this.productionDate,
-        director: director ?? this.director,
-        dop: dop ?? this.dop,
-        location: location ?? this.location,
-        notes: notes ?? this.notes,
-        roll: roll ?? this.roll,
-        scene: scene ?? this.scene,
-        shot: shot ?? this.shot,
-        take: take ?? this.take,
-        frameRate: frameRate ?? this.frameRate,
-        soundEnabled: soundEnabled ?? this.soundEnabled,
-        fields: fields ?? this.fields,
-      );
+  }) => FilmProject(
+    id: id,
+    name: name ?? this.name,
+    productionDate: productionDate ?? this.productionDate,
+    director: director ?? this.director,
+    dop: dop ?? this.dop,
+    location: location ?? this.location,
+    notes: notes ?? this.notes,
+    roll: roll ?? this.roll,
+    scene: scene ?? this.scene,
+    shot: shot ?? this.shot,
+    take: take ?? this.take,
+    soundEnabled: soundEnabled ?? this.soundEnabled,
+    fields: fields ?? this.fields,
+  );
 
   Map<String, Object?> toMap() => {
-        'id': id,
-        'name': name,
-        'productionDate': productionDate,
-        'director': director,
-        'dop': dop,
-        'location': location,
-        'notes': notes,
-        'roll': roll,
-        'scene': scene,
-        'shot': shot,
-        'take': take,
-        'frameRate': frameRate,
-        'soundEnabled': soundEnabled,
-        'fields': fields.map((field) => field.toMap()).toList(),
-      };
+    'id': id,
+    'name': name,
+    'productionDate': productionDate,
+    'director': director,
+    'dop': dop,
+    'location': location,
+    'notes': notes,
+    'roll': roll,
+    'scene': scene,
+    'shot': shot,
+    'take': take,
+    'soundEnabled': soundEnabled,
+    'fields': fields.map((field) => field.toMap()).toList(),
+  };
 
   factory FilmProject.fromMap(Map<String, dynamic> map) => FilmProject(
-        id: map['id'] as String,
-        name: map['name'] as String,
-        productionDate: map['productionDate'] as String,
-        director: map['director'] as String? ?? '',
-        dop: map['dop'] as String? ?? '',
-        location: map['location'] as String? ?? '',
-        notes: map['notes'] as String? ?? '',
-        roll: map['roll'] as String? ?? 'A001',
-        scene: map['scene'] as String? ?? '1',
-        shot: map['shot'] as String? ?? '1',
-        take: map['take'] as int? ?? 1,
-        frameRate: (map['frameRate'] as num?)?.toDouble() ?? 24,
-        soundEnabled: map['soundEnabled'] as bool? ?? true,
-        fields: (map['fields'] as List<dynamic>?)
-                ?.map((item) =>
-                    SlateField.fromMap(Map<String, dynamic>.from(item as Map)))
-                .toList() ??
-            defaultSlateFields,
-      );
+    id: map['id'] as String,
+    name: map['name'] as String,
+    productionDate: map['productionDate'] as String,
+    director: map['director'] as String? ?? '',
+    dop: map['dop'] as String? ?? '',
+    location: map['location'] as String? ?? '',
+    notes: map['notes'] as String? ?? '',
+    roll: map['roll'] as String? ?? 'A001',
+    scene: map['scene'] as String? ?? '1',
+    shot: map['shot'] as String? ?? '1',
+    take: map['take'] as int? ?? 1,
+    soundEnabled: map['soundEnabled'] as bool? ?? true,
+    fields:
+        (map['fields'] as List<dynamic>?)
+            ?.map(
+              (item) =>
+                  SlateField.fromMap(Map<String, dynamic>.from(item as Map)),
+            )
+            .toList() ??
+        defaultSlateFields,
+  );
 }
 
 class TakeRecord {
@@ -189,45 +188,44 @@ class TakeRecord {
     String? timecode,
     TakeRating? rating,
     String? notes,
-  }) =>
-      TakeRecord(
-        id: id,
-        projectId: projectId,
-        scene: scene ?? this.scene,
-        shot: shot ?? this.shot,
-        take: take ?? this.take,
-        timecode: timecode ?? this.timecode,
-        createdAt: createdAt,
-        rating: rating ?? this.rating,
-        notes: notes ?? this.notes,
-      );
+  }) => TakeRecord(
+    id: id,
+    projectId: projectId,
+    scene: scene ?? this.scene,
+    shot: shot ?? this.shot,
+    take: take ?? this.take,
+    timecode: timecode ?? this.timecode,
+    createdAt: createdAt,
+    rating: rating ?? this.rating,
+    notes: notes ?? this.notes,
+  );
 
   Map<String, Object?> toMap() => {
-        'id': id,
-        'projectId': projectId,
-        'scene': scene,
-        'shot': shot,
-        'take': take,
-        'timecode': timecode,
-        'createdAt': createdAt.millisecondsSinceEpoch,
-        'rating': rating.name,
-        'notes': notes,
-      };
+    'id': id,
+    'projectId': projectId,
+    'scene': scene,
+    'shot': shot,
+    'take': take,
+    'timecode': timecode,
+    'createdAt': createdAt.millisecondsSinceEpoch,
+    'rating': rating.name,
+    'notes': notes,
+  };
 
   factory TakeRecord.fromMap(Map<String, Object?> map) => TakeRecord(
-        id: map['id'] as int,
-        projectId: map['projectId'] as String,
-        scene: map['scene'] as String,
-        shot: map['shot'] as String,
-        take: map['take'] as int,
-        timecode: map['timecode'] as String,
-        createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int),
-        rating: TakeRating.values.firstWhere(
-          (rating) => rating.name == map['rating'],
-          orElse: () => TakeRating.good,
-        ),
-        notes: map['notes'] as String? ?? '',
-      );
+    id: map['id'] as int,
+    projectId: map['projectId'] as String,
+    scene: map['scene'] as String,
+    shot: map['shot'] as String,
+    take: map['take'] as int,
+    timecode: map['timecode'] as String,
+    createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int),
+    rating: TakeRating.values.firstWhere(
+      (rating) => rating.name == map['rating'],
+      orElse: () => TakeRating.good,
+    ),
+    notes: map['notes'] as String? ?? '',
+  );
 }
 
 class LocalStore {
@@ -270,18 +268,20 @@ class LocalStore {
   Future<List<FilmProject>> getProjects() async {
     final rows = await (await database).query('projects');
     return rows
-        .map((row) => FilmProject.fromMap(
-            jsonDecode(row['data']! as String) as Map<String, dynamic>))
+        .map(
+          (row) => FilmProject.fromMap(
+            jsonDecode(row['data']! as String) as Map<String, dynamic>,
+          ),
+        )
         .toList()
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
   }
 
   Future<void> saveProject(FilmProject project) async {
-    await (await database).insert(
-      'projects',
-      {'id': project.id, 'data': jsonEncode(project.toMap())},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await (await database).insert('projects', {
+      'id': project.id,
+      'data': jsonEncode(project.toMap()),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> deleteProject(String id) async {
