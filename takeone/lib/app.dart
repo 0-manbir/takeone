@@ -940,15 +940,13 @@ class SlatePreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fields = project.fields;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
       children: [
-        const _SectionEyebrow('READY FOR THE NEXT TAKE'),
-        const SizedBox(height: 11),
         GestureDetector(
           onTap: onOpenSlate,
           child: Container(
-            height: 210,
             decoration: BoxDecoration(
               color: const Color(0xFF171916),
               borderRadius: BorderRadius.circular(19),
@@ -957,20 +955,8 @@ class SlatePreview extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             child: Stack(
               children: [
-                Positioned(
-                  top: -50,
-                  right: -35,
-                  child: Container(
-                    height: 180,
-                    width: 180,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Color(controller.accent).withValues(alpha: .07),
-                    ),
-                  ),
-                ),
                 Padding(
-                  padding: const EdgeInsets.all(19),
+                  padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -991,18 +977,16 @@ class SlatePreview extends StatelessWidget {
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          const Spacer(),
-                          const Icon(
-                            Icons.fullscreen_rounded,
-                            color: Colors.white60,
-                            size: 19,
-                          ),
                         ],
                       ),
-                      const Spacer(),
-                      Wrap(
-                        spacing: 9,
-                        runSpacing: 8,
+                      const SizedBox(height: 16),
+                      GridView.count(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 9,
+                        mainAxisSpacing: 8,
+                        childAspectRatio: 2,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
                         children: fields
                             .where((field) => field.visible)
                             .map(
@@ -1015,37 +999,15 @@ class SlatePreview extends StatelessWidget {
                                 ),
                                 accent: Color(controller.accent),
                                 size: field.size,
+                                onTap: _slatePositionEditor(
+                                  context,
+                                  controller,
+                                  project,
+                                  field.id,
+                                ),
                               ),
                             )
                             .toList(),
-                      ),
-                      const Spacer(),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.circle,
-                            color: Color(0xFF67C995),
-                            size: 8,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '00:00:00',
-                            style: const TextStyle(
-                              color: Colors.white60,
-                              fontSize: 10,
-                            ),
-                          ),
-                          const Spacer(),
-                          const Text(
-                            'TAP TO OPEN SLATE',
-                            style: TextStyle(
-                              color: Colors.white54,
-                              fontSize: 8,
-                              letterSpacing: 1.2,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),
@@ -1065,43 +1027,6 @@ class SlatePreview extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 15),
           ),
         ),
-        const SizedBox(height: 22),
-        Row(
-          children: [
-            const Expanded(child: _SectionEyebrow('CURRENT SETUP')),
-            TextButton.icon(
-              onPressed: () => controller.saveProject(
-                project.copyWith(take: project.take + 1),
-              ),
-              icon: const Icon(Icons.skip_next_rounded, size: 17),
-              label: const Text('Next take'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 3),
-        Card(
-          child: Column(
-            children: [
-              _InfoRow(
-                icon: Icons.person_outline,
-                label: 'Director',
-                value: project.director.isEmpty ? 'Not set' : project.director,
-              ),
-              const Divider(height: 1, indent: 52, endIndent: 15),
-              _InfoRow(
-                icon: Icons.camera_alt_outlined,
-                label: 'Director of photography',
-                value: project.dop.isEmpty ? 'Not set' : project.dop,
-              ),
-              const Divider(height: 1, indent: 52, endIndent: 15),
-              _InfoRow(
-                icon: Icons.location_on_outlined,
-                label: 'Location',
-                value: project.location.isEmpty ? 'Not set' : project.location,
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }
@@ -1113,43 +1038,57 @@ class _SlateValue extends StatelessWidget {
     required this.value,
     required this.accent,
     this.size = 1,
+    this.onTap,
   });
 
   final String label;
   final String value;
   final Color accent;
   final double size;
+  final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Container(
-    constraints: const BoxConstraints(minWidth: 65),
-    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-    decoration: BoxDecoration(
+  Widget build(BuildContext context) => Material(
+    color: accent.withValues(alpha: .08),
+    borderRadius: BorderRadius.circular(9),
+    child: InkWell(
+      onTap: onTap,
       borderRadius: BorderRadius.circular(9),
-      border: Border.all(color: accent.withValues(alpha: .4)),
-      color: accent.withValues(alpha: .08),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label.toUpperCase(),
-          style: TextStyle(
-            fontSize: 8,
-            color: accent,
-            letterSpacing: 1.1,
-            fontWeight: FontWeight.w700,
-          ),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(color: accent.withValues(alpha: .4)),
         ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-          ).copyWith(fontSize: 18 * size),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              label.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 8,
+                color: accent,
+                letterSpacing: 1.1,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ).copyWith(fontSize: 18 * size),
+            ),
+          ],
         ),
-      ],
+      ),
     ),
   );
 }
@@ -1162,6 +1101,109 @@ String _fieldValue(FilmProject project, String id, {String customValue = ''}) =>
       'take' => project.take.toString().padLeft(2, '0'),
       _ => customValue,
     };
+
+VoidCallback? _slatePositionEditor(
+  BuildContext context,
+  AppController controller,
+  FilmProject project,
+  String fieldId,
+) {
+  if (!const {'roll', 'scene', 'shot', 'take'}.contains(fieldId)) return null;
+  return () => _editSlatePosition(context, controller, project, fieldId);
+}
+
+Future<void> _editSlatePosition(
+  BuildContext context,
+  AppController controller,
+  FilmProject project,
+  String fieldId,
+) async {
+  if (!const {'roll', 'scene', 'shot', 'take'}.contains(fieldId)) return;
+  final label = switch (fieldId) {
+    'roll' => 'Roll',
+    'scene' => 'Scene',
+    'shot' => 'Shot',
+    'take' => 'Take',
+    _ => fieldId,
+  };
+  final input = TextEditingController(
+    text: switch (fieldId) {
+      'roll' => project.roll,
+      'scene' => project.scene,
+      'shot' => project.shot,
+      'take' => project.take.toString(),
+      _ => '',
+    },
+  );
+  final formKey = GlobalKey<FormState>();
+  final value = await showDialog<String>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text('Change $label'),
+      content: Form(
+        key: formKey,
+        child: TextFormField(
+          controller: input,
+          autofocus: true,
+          keyboardType: fieldId == 'take'
+              ? TextInputType.number
+              : TextInputType.text,
+          textInputAction: TextInputAction.done,
+          decoration: InputDecoration(labelText: label),
+          validator: fieldId == 'take'
+              ? (value) {
+                  final take = int.tryParse(value?.trim() ?? '');
+                  if (take == null || take < 1 || take > 9999) {
+                    return 'Enter a take number from 1 to 9999';
+                  }
+                  return null;
+                }
+              : (value) => value == null || value.trim().isEmpty
+                    ? 'Enter a $label value'
+                    : null,
+          onFieldSubmitted: (_) {
+            if (formKey.currentState!.validate()) {
+              Navigator.pop(dialogContext, input.text.trim());
+            }
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (formKey.currentState!.validate()) {
+              Navigator.pop(dialogContext, input.text.trim());
+            }
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    ),
+  );
+  input.dispose();
+  if (value == null || !context.mounted) return;
+
+  final updatedProject = switch (fieldId) {
+    'roll' => project.copyWith(roll: value),
+    'scene' => project.copyWith(scene: value),
+    'shot' => project.copyWith(shot: value),
+    'take' => project.copyWith(take: int.parse(value)),
+    _ => project,
+  };
+  try {
+    await controller.saveProject(updatedProject);
+  } catch (error) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not update $label: $error')),
+      );
+    }
+  }
+}
 
 class _InfoRow extends StatelessWidget {
   const _InfoRow({
@@ -1740,9 +1782,10 @@ class _TakeCard extends StatelessWidget {
 }
 
 Color _ratingColor(TakeRating rating) => switch (rating) {
-  TakeRating.good || TakeRating.movingOn => const Color(0xFF68C991),
-  TakeRating.bad => const Color(0xFFE1786B),
-  TakeRating.test => const Color(0xFF80A9E8),
+  TakeRating.movingOn => const Color.fromARGB(255, 68, 188, 118),
+  TakeRating.good => const Color.fromARGB(255, 192, 192, 74),
+  TakeRating.bad => const Color.fromARGB(255, 195, 98, 83),
+  TakeRating.test => const Color.fromARGB(255, 167, 167, 167),
 };
 
 String _ratingLabel(TakeRating rating) => switch (rating) {
@@ -2191,11 +2234,11 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        alignment: WrapAlignment.start,
-                        crossAxisAlignment: WrapCrossAlignment.center,
+                      child: GridView.count(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
+                        childAspectRatio: 2.5,
                         children: fields
                             .where((field) => field.visible)
                             .map(
@@ -2208,6 +2251,12 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                                 ),
                                 accent: Color(widget.controller.accent),
                                 size: field.size,
+                                onTap: _slatePositionEditor(
+                                  context,
+                                  widget.controller,
+                                  activeProject,
+                                  field.id,
+                                ),
                               ),
                             )
                             .toList(),
