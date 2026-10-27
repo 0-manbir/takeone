@@ -10,10 +10,7 @@ import 'package:printing/printing.dart';
 
 import 'data/app_data.dart';
 
-const _canvasDark = Color(0xFF111210);
-const _panelDark = Color(0xFF1C1E1A);
-const _gold = Color(0xFFC9A56A);
-const _muted = Color(0xFF9A9B94);
+const _defaultAccent = Color(0xFFC9A56A);
 
 class AppController extends ChangeNotifier {
   AppController() {
@@ -22,9 +19,9 @@ class AppController extends ChangeNotifier {
 
   final store = LocalStore.instance;
   List<FilmProject> projects = [];
-  String theme = 'cinema';
+  String theme = 'dark';
   String fontStyle = 'modern';
-  int accent = _gold.toARGB32();
+  int accent = _defaultAccent.toARGB32();
   bool loading = true;
   Object? loadError;
 
@@ -82,8 +79,8 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> setTheme(String value) async {
-    theme = value;
-    await UserPreferences.instance.setTheme(value);
+    theme = value == 'light' ? 'light' : 'dark';
+    await UserPreferences.instance.setTheme(theme);
     notifyListeners();
   }
 
@@ -127,16 +124,25 @@ class _TakeOneAppState extends State<TakeOneApp> {
     animation: controller,
     builder: (context, _) {
       final light = controller.theme == 'light';
-      final cinematic = controller.theme == 'cinema';
       final accent = Color(controller.accent);
-      final scheme = ColorScheme.fromSeed(
+      final canvas = Color.alphaBlend(
+        accent.withValues(alpha: light ? .07 : .12),
+        light ? const Color(0xFFF6F4F0) : const Color(0xFF111210),
+      );
+      final panel = Color.alphaBlend(
+        accent.withValues(alpha: light ? .035 : .07),
+        light ? Colors.white : const Color(0xFF1C1E1A),
+      );
+      final baseScheme = ColorScheme.fromSeed(
         seedColor: accent,
         brightness: light ? Brightness.light : Brightness.dark,
-        surface: light
-            ? const Color(0xFFF6F4F0)
-            : cinematic
-            ? _canvasDark
-            : const Color(0xFF090A0A),
+        surface: panel,
+      );
+      final scheme = baseScheme.copyWith(
+        primary: accent,
+        onPrimary: accent.computeLuminance() > .5
+            ? const Color(0xFF171717)
+            : Colors.white,
       );
       return MaterialApp(
         title: 'TakeOne',
@@ -149,40 +155,31 @@ class _TakeOneAppState extends State<TakeOneApp> {
             _ => null,
           },
           colorScheme: scheme,
-          scaffoldBackgroundColor: light
-              ? const Color(0xFFF6F4F0)
-              : cinematic
-              ? _canvasDark
-              : const Color(0xFF090A0A),
+          scaffoldBackgroundColor: canvas,
           appBarTheme: AppBarTheme(
-            backgroundColor: light
-                ? const Color(0xFFF6F4F0)
-                : cinematic
-                ? _canvasDark
-                : const Color(0xFF090A0A),
-            foregroundColor: light ? const Color(0xFF20211E) : Colors.white,
+            backgroundColor: canvas,
+            foregroundColor: scheme.onSurface,
           ),
           cardTheme: CardThemeData(
-            color: light
-                ? Colors.white
-                : cinematic
-                ? _panelDark
-                : const Color(0xFF171717),
+            color: panel,
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(18),
               side: BorderSide(
                 color: light
                     ? const Color(0xFFE6E2DA)
-                    : Colors.white.withValues(alpha: .06),
+                    : scheme.onSurface.withValues(alpha: .06),
               ),
             ),
           ),
           inputDecorationTheme: InputDecorationTheme(
             filled: true,
             fillColor: light
-                ? const Color(0xFFF1EFEA)
-                : Colors.white.withValues(alpha: .045),
+                ? Color.alphaBlend(
+                    accent.withValues(alpha: .045),
+                    const Color(0xFFF1EFEA),
+                  )
+                : scheme.onSurface.withValues(alpha: .045),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(13),
               borderSide: BorderSide.none,
@@ -244,7 +241,10 @@ class HomeScreen extends StatelessWidget {
                       const SizedBox(width: 7),
                       Text(
                         '[${controller.projects.length}]',
-                        style: const TextStyle(color: _muted, fontSize: 13),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 13,
+                        ),
                       ),
                       const Spacer(),
                       FilledButton.icon(
@@ -253,7 +253,9 @@ class HomeScreen extends StatelessWidget {
                         label: const Text('New project'),
                         style: FilledButton.styleFrom(
                           backgroundColor: Color(controller.accent),
-                          foregroundColor: const Color(0xFF191712),
+                          foregroundColor: Theme.of(
+                            context,
+                          ).colorScheme.onPrimary,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
                             vertical: 11,
@@ -332,7 +334,9 @@ class _OverviewCard extends StatelessWidget {
           Container(
             height: 36,
             width: 1,
-            color: Colors.white.withValues(alpha: .1),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: .1),
           ),
           const Spacer(),
           _Metric(label: 'PROJECTS', value: '${projects.length}'),
@@ -340,7 +344,9 @@ class _OverviewCard extends StatelessWidget {
           Container(
             height: 36,
             width: 1,
-            color: Colors.white.withValues(alpha: .1),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: .1),
           ),
           const Spacer(),
           const _Metric(label: 'ON SET', value: 'OFFLINE'),
@@ -371,8 +377,8 @@ class _Metric extends StatelessWidget {
       const SizedBox(height: 5),
       Text(
         label,
-        style: const TextStyle(
-          color: _muted,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
           fontSize: 8,
           fontWeight: FontWeight.w700,
           letterSpacing: 1,
@@ -406,15 +412,15 @@ class _ProjectCard extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 15, 12, 15),
         child: Row(
           children: [
-            // Container(
-            //   width: 46,
-            //   height: 51,
-            //   decoration: BoxDecoration(
-            //     color: accent.withValues(alpha: .12),
-            //     borderRadius: BorderRadius.circular(12),
-            //   ),
-            //   child: Icon(Icons.movie_outlined, color: accent, size: 23),
-            // ),
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.movie_outlined, color: accent, size: 23),
+            ),
             const SizedBox(width: 8),
             Expanded(
               flex: 3,
@@ -438,7 +444,10 @@ class _ProjectCard extends StatelessWidget {
                     ].join('  ·  '),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: _muted, fontSize: 11.5),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 11.5,
+                    ),
                   ),
                 ],
               ),
@@ -452,14 +461,11 @@ class _ProjectCard extends StatelessWidget {
                 PopupMenuItem(value: 'edit', child: Text('Edit project')),
                 PopupMenuItem(value: 'delete', child: Text('Delete project')),
               ],
-              icon: const Icon(Icons.more_horiz_rounded, color: _muted),
+              icon: Icon(
+                Icons.more_horiz_rounded,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
-            // Icon(
-            //   Icons.chevron_right_rounded,
-            //   color: Theme.of(
-            //     context,
-            //   ).colorScheme.onSurface.withValues(alpha: .4),
-            // ),
           ],
         ),
       ),
@@ -478,7 +484,11 @@ class _EmptyProjects extends StatelessWidget {
       padding: const EdgeInsets.all(26),
       child: Column(
         children: [
-          const Icon(Icons.movie_filter_outlined, color: _gold, size: 34),
+          Icon(
+            Icons.movie_filter_outlined,
+            color: Theme.of(context).colorScheme.primary,
+            size: 34,
+          ),
           const SizedBox(height: 13),
           const Text('Create a project to get started'),
         ],
@@ -510,7 +520,10 @@ class _LoadFailure extends StatelessWidget {
           Text(
             '$error',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: _muted, fontSize: 12),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 12,
+            ),
           ),
           const SizedBox(height: 12),
           FilledButton(onPressed: onRetry, child: const Text('Try again')),
@@ -664,7 +677,10 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
               ),
               subtitle: Text(
                 _productionDate,
-                style: const TextStyle(color: _muted, fontSize: 12),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 12,
+                ),
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () async {
@@ -784,8 +800,8 @@ class _ProjectWorkspaceState extends State<ProjectWorkspace> {
               ),
               Text(
                 project.productionDate,
-                style: const TextStyle(
-                  color: _muted,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontSize: 10,
                   height: 1.5,
                 ),
@@ -905,7 +921,9 @@ class _WorkspaceTab extends StatelessWidget {
             Icon(
               icon,
               size: 16,
-              color: selected ? Theme.of(context).colorScheme.primary : _muted,
+              color: selected
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: 7),
             Text(
@@ -913,7 +931,7 @@ class _WorkspaceTab extends StatelessWidget {
               style: TextStyle(
                 color: selected
                     ? Theme.of(context).colorScheme.onSurface
-                    : _muted,
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
                 fontSize: 12,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
@@ -948,9 +966,13 @@ class SlatePreview extends StatelessWidget {
           onTap: onOpenSlate,
           child: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFF171916),
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(19),
-              border: Border.all(color: Colors.white.withValues(alpha: .1)),
+              border: Border.all(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: .1),
+              ),
             ),
             clipBehavior: Clip.antiAlias,
             child: Stack(
@@ -970,8 +992,10 @@ class SlatePreview extends StatelessWidget {
                           const SizedBox(width: 7),
                           Text(
                             project.name.toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white70,
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                               fontSize: 10,
                               letterSpacing: 1.7,
                               fontWeight: FontWeight.w700,
@@ -1023,7 +1047,7 @@ class SlatePreview extends StatelessWidget {
           label: const Text('Open full-screen slate'),
           style: FilledButton.styleFrom(
             backgroundColor: Color(controller.accent),
-            foregroundColor: const Color(0xFF191712),
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
             padding: const EdgeInsets.symmetric(vertical: 15),
           ),
         ),
@@ -1056,7 +1080,7 @@ class _SlateValue extends StatelessWidget {
       borderRadius: BorderRadius.circular(9),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 3),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(9),
           border: Border.all(color: accent.withValues(alpha: .4)),
@@ -1076,13 +1100,13 @@ class _SlateValue extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 3),
             Text(
               value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w700,
               ).copyWith(fontSize: 18 * size),
             ),
@@ -1221,12 +1245,19 @@ class _InfoRow extends StatelessWidget {
     padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
     child: Row(
       children: [
-        Icon(icon, color: _muted, size: 18),
+        Icon(
+          icon,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          size: 18,
+        ),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(color: _muted, fontSize: 12),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 12,
+            ),
           ),
         ),
         const SizedBox(width: 10),
@@ -1367,9 +1398,9 @@ class _ProjectSetupViewState extends State<ProjectSetupView> {
                   padding: const EdgeInsets.fromLTRB(11, 5, 4, 5),
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.drag_indicator_rounded,
-                        color: _muted,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         size: 19,
                       ),
                       const SizedBox(width: 7),
@@ -1397,8 +1428,10 @@ class _ProjectSetupViewState extends State<ProjectSetupView> {
                                 const SizedBox(height: 3),
                                 Text(
                                   '${field.id.toUpperCase()}  ·  ${field.size.toStringAsFixed(1)}× text',
-                                  style: const TextStyle(
-                                    color: _muted,
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
                                     fontSize: 9,
                                   ),
                                 ),
@@ -1463,9 +1496,12 @@ class _ProjectSetupViewState extends State<ProjectSetupView> {
             'Clapper sound',
             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           ),
-          subtitle: const Text(
+          subtitle: Text(
             'Play the slate sound on each clap',
-            style: TextStyle(color: _muted, fontSize: 11),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 11,
+            ),
           ),
           onChanged: (value) => widget.controller.saveProject(
             widget.project.copyWith(soundEnabled: value),
@@ -1659,10 +1695,12 @@ class _TakeHistoryViewState extends State<TakeHistoryView> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.movie_filter_outlined,
                             size: 34,
-                            color: _muted,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                           const SizedBox(height: 11),
                           Text(
@@ -1671,9 +1709,14 @@ class _TakeHistoryViewState extends State<TakeHistoryView> {
                                 : 'No ${_filter.toLowerCase()} takes',
                           ),
                           const SizedBox(height: 5),
-                          const Text(
+                          Text(
                             'Your slate history will appear here.',
-                            style: TextStyle(color: _muted, fontSize: 11),
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                              fontSize: 11,
+                            ),
                           ),
                         ],
                       ),
@@ -1749,7 +1792,10 @@ class _TakeCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     '${take.timecode}  ·  ${DateFormat('MMM d, h:mm a').format(take.createdAt)}',
-                    style: const TextStyle(color: _muted, fontSize: 10),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 10,
+                    ),
                   ),
                   if (take.notes.isNotEmpty) ...[
                     const SizedBox(height: 6),
@@ -1772,7 +1818,11 @@ class _TakeCard extends StatelessWidget {
                 PopupMenuItem(value: 'edit', child: Text('Edit take')),
                 PopupMenuItem(value: 'delete', child: Text('Delete take')),
               ],
-              icon: const Icon(Icons.more_vert, size: 19, color: _muted),
+              icon: Icon(
+                Icons.more_vert,
+                size: 19,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -2065,7 +2115,7 @@ class _ClapboardScreenState extends State<ClapboardScreen>
       builder: (context) => PopScope(
         canPop: false,
         child: Dialog.fullscreen(
-          backgroundColor: const Color(0xFF111210),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           child: SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
@@ -2075,7 +2125,10 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                   Center(
                     child: Text(
                       'Scene ${activeProject.scene}  ·  Shot ${activeProject.shot}  ·  Take ${activeProject.take}',
-                      style: const TextStyle(color: _muted, fontSize: 14),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -2214,7 +2267,7 @@ class _ClapboardScreenState extends State<ClapboardScreen>
     return AnimatedBuilder(
       animation: _flash,
       builder: (context, _) => Scaffold(
-        backgroundColor: const Color(0xFF111210),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -2224,10 +2277,12 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                 width: double.infinity,
                 padding: EdgeInsets.all(large ? 19 : 11),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1D201C),
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(13),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: .09),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: .09),
                   ),
                 ),
                 child: Column(
@@ -2272,8 +2327,8 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                         const SizedBox(width: 6),
                         Text(
                           _timecode,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontFeatures: [FontFeature.tabularFigures()],
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -2303,9 +2358,9 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                     child: InkWell(
                       borderRadius: BorderRadius.circular(18),
                       onTap: () => _manualTake(-1),
-                      child: const Icon(
+                      child: Icon(
                         Icons.remove_circle_outline,
-                        color: Colors.white54,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         size: 17,
                       ),
                     ),
@@ -2326,9 +2381,9 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                     child: InkWell(
                       borderRadius: BorderRadius.circular(18),
                       onTap: () => _manualTake(1),
-                      child: const Icon(
+                      child: Icon(
                         Icons.add_circle_outline,
-                        color: Colors.white54,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         size: 17,
                       ),
                     ),
@@ -2347,7 +2402,7 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                   label: Text(_clapping ? 'MARK!' : 'CLAP'),
                   style: FilledButton.styleFrom(
                     backgroundColor: Color(widget.controller.accent),
-                    foregroundColor: const Color(0xFF15140F),
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
                     textStyle: const TextStyle(
                       letterSpacing: 1.6,
                       fontWeight: FontWeight.w900,
@@ -2362,10 +2417,10 @@ class _ClapboardScreenState extends State<ClapboardScreen>
               final landscapeControls = Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
+                  Text(
                     'ROLLING TAKE',
                     style: TextStyle(
-                      color: _muted,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 8,
                       letterSpacing: 1.6,
                       fontWeight: FontWeight.w700,
@@ -2382,8 +2437,8 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                   Positioned.fill(
                     child: IgnorePointer(
                       child: ColoredBox(
-                        color: const Color(
-                          0xFFC9A56A,
+                        color: Color(
+                          widget.controller.accent,
                         ).withValues(alpha: _flash.value * .16),
                       ),
                     ),
@@ -2401,9 +2456,11 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                           children: [
                             IconButton(
                               onPressed: () => Navigator.pop(context),
-                              icon: const Icon(
+                              icon: Icon(
                                 Icons.close_rounded,
-                                color: Colors.white70,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                               ),
                               tooltip: 'Close slate',
                               visualDensity: VisualDensity.compact,
@@ -2421,7 +2478,9 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: Colors.white.withValues(alpha: .8),
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface.withValues(alpha: .8),
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: 2,
                                   fontSize: large ? 12 : 10,
@@ -2453,10 +2512,12 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                                               mainAxisAlignment:
                                                   MainAxisAlignment.center,
                                               children: [
-                                                const Text(
+                                                Text(
                                                   'ROLLING TAKE',
                                                   style: TextStyle(
-                                                    color: _muted,
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurfaceVariant,
                                                     fontSize: 8,
                                                     letterSpacing: 1.4,
                                                     fontWeight: FontWeight.w700,
@@ -2567,15 +2628,19 @@ class _BottomMeta extends StatelessWidget {
     children: [
       Text(
         '$label  ',
-        style: const TextStyle(color: _muted, fontSize: 7, letterSpacing: 1),
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontSize: 7,
+          letterSpacing: 1,
+        ),
       ),
       Flexible(
         child: Text(
           value.isEmpty ? '—' : value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: Colors.white70,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
             fontSize: 9,
             fontWeight: FontWeight.w600,
           ),
@@ -2637,7 +2702,9 @@ class _RatingAction extends StatelessWidget {
                 Text(
                   subtitle,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: .65),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: .65),
                     fontSize: 16,
                   ),
                   maxLines: 2,
@@ -2889,6 +2956,7 @@ Future<void> _showAppearance(
 ) async {
   await showModalBottomSheet<void>(
     context: context,
+    constraints: BoxConstraints.expand(width: double.infinity),
     showDragHandle: true,
     builder: (context) => SafeArea(
       child: Padding(
@@ -2901,19 +2969,13 @@ Future<void> _showAppearance(
               'Appearance',
               style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 5),
-            const Text(
-              'Your preferences are saved on this device.',
-              style: TextStyle(color: _muted, fontSize: 11),
-            ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 8),
             const _SectionEyebrow('THEME'),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               children: [
                 for (final option in [
-                  ('cinema', 'Cinematic', Icons.movie_filter_outlined),
                   ('dark', 'Dark', Icons.dark_mode_outlined),
                   ('light', 'Light', Icons.light_mode_outlined),
                 ])
@@ -2922,24 +2984,6 @@ Future<void> _showAppearance(
                     label: Text(option.$2),
                     selected: controller.theme == option.$1,
                     onSelected: (_) => controller.setTheme(option.$1),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const _SectionEyebrow('TYPEFACE'),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final option in [
-                  ('modern', 'Modern'),
-                  ('serif', 'Serif'),
-                  ('mono', 'Monospace'),
-                ])
-                  ChoiceChip(
-                    label: Text(option.$2),
-                    selected: controller.fontStyle == option.$1,
-                    onSelected: (_) => controller.setFontStyle(option.$1),
                   ),
               ],
             ),

@@ -329,10 +329,15 @@ class UserPreferences {
   static const _fontKey = 'app_font_style';
 
   Future<String> getTheme() async =>
-      (await SharedPreferences.getInstance()).getString(_themeKey) ?? 'cinema';
+      (await SharedPreferences.getInstance()).getString(_themeKey) == 'light'
+      ? 'light'
+      : 'dark';
 
   Future<void> setTheme(String value) async {
-    await (await SharedPreferences.getInstance()).setString(_themeKey, value);
+    await (await SharedPreferences.getInstance()).setString(
+      _themeKey,
+      value == 'light' ? 'light' : 'dark',
+    );
   }
 
   Future<int> getAccent() async =>
