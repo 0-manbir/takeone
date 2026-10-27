@@ -1150,65 +1150,11 @@ Future<void> _editSlatePosition(
     'take' => 'Take',
     _ => fieldId,
   };
-  final input = TextEditingController(
-    text: switch (fieldId) {
-      'roll' => project.roll,
-      'scene' => project.scene,
-      'shot' => project.shot,
-      'take' => project.take.toString(),
-      _ => '',
-    },
-  );
-  final formKey = GlobalKey<FormState>();
   final value = await showDialog<String>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: Text('Change $label'),
-      content: Form(
-        key: formKey,
-        child: TextFormField(
-          controller: input,
-          autofocus: true,
-          keyboardType: fieldId == 'take'
-              ? TextInputType.number
-              : TextInputType.text,
-          textInputAction: TextInputAction.done,
-          decoration: InputDecoration(labelText: label),
-          validator: fieldId == 'take'
-              ? (value) {
-                  final take = int.tryParse(value?.trim() ?? '');
-                  if (take == null || take < 1 || take > 9999) {
-                    return 'Enter a take number from 1 to 9999';
-                  }
-                  return null;
-                }
-              : (value) => value == null || value.trim().isEmpty
-                    ? 'Enter a $label value'
-                    : null,
-          onFieldSubmitted: (_) {
-            if (formKey.currentState!.validate()) {
-              Navigator.pop(dialogContext, input.text.trim());
-            }
-          },
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () {
-            if (formKey.currentState!.validate()) {
-              Navigator.pop(dialogContext, input.text.trim());
-            }
-          },
-          child: const Text('Save'),
-        ),
-      ],
-    ),
+    builder: (_) =>
+        _SlatePositionDialog(project: project, fieldId: fieldId, label: label),
   );
-  input.dispose();
   if (value == null || !context.mounted) return;
 
   final updatedProject = switch (fieldId) {
@@ -1227,6 +1173,127 @@ Future<void> _editSlatePosition(
       );
     }
   }
+}
+
+class _SlatePositionDialog extends StatefulWidget {
+  const _SlatePositionDialog({
+    required this.project,
+    required this.fieldId,
+    required this.label,
+  });
+
+  final FilmProject project;
+  final String fieldId;
+  final String label;
+
+  @override
+  State<_SlatePositionDialog> createState() => _SlatePositionDialogState();
+}
+
+class _SlatePositionDialogState extends State<_SlatePositionDialog> {
+  late final TextEditingController _input;
+  final _formKey = GlobalKey<FormState>();
+  late bool _alphabetic;
+
+  bool get _hasCodeFormat =>
+      widget.fieldId == 'scene' || widget.fieldId == 'shot';
+
+  @override
+  void initState() {
+    super.initState();
+    final value = switch (widget.fieldId) {
+      'roll' => widget.project.roll,
+      'scene' => widget.project.scene,
+      'shot' => widget.project.shot,
+      'take' => widget.project.take.toString(),
+      _ => '',
+    };
+    _input = TextEditingController(text: value);
+    _alphabetic = _isAlphabeticCode(value);
+  }
+
+  @override
+  void dispose() {
+    _input.dispose();
+    super.dispose();
+  }
+
+  String? _validate(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (widget.fieldId == 'take') {
+      final take = int.tryParse(trimmed);
+      if (take == null || take < 1 || take > 9999) {
+        return 'Enter a take number from 1 to 9999';
+      }
+    } else if (trimmed.isEmpty) {
+      return 'Enter a ${widget.label} value';
+    } else if (_hasCodeFormat &&
+        !(_alphabetic
+            ? RegExp(r'^[a-zA-Z]+$').hasMatch(trimmed)
+            : RegExp(r'^\d+$').hasMatch(trimmed))) {
+      return _alphabetic ? 'Use letters only' : 'Use numbers only';
+    }
+    return null;
+  }
+
+  void _save() {
+    if (_formKey.currentState!.validate()) {
+      Navigator.pop(context, _input.text.trim());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text('Change ${widget.label}'),
+    content: Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_hasCodeFormat) ...[
+            _CodeFormatSelector(
+              label: '${widget.label} format',
+              alphabetic: _alphabetic,
+              onChanged: (alphabetic) => setState(() {
+                _alphabetic = alphabetic;
+                _input.text = alphabetic ? 'A' : '1';
+              }),
+            ),
+            const SizedBox(height: 10),
+          ],
+          TextFormField(
+            controller: _input,
+            autofocus: true,
+            keyboardType: _hasCodeFormat
+                ? _alphabetic
+                      ? TextInputType.text
+                      : TextInputType.number
+                : widget.fieldId == 'take'
+                ? TextInputType.number
+                : TextInputType.text,
+            inputFormatters: _hasCodeFormat
+                ? [
+                    FilteringTextInputFormatter.allow(
+                      _alphabetic ? RegExp('[a-zA-Z]') : RegExp('[0-9]'),
+                    ),
+                  ]
+                : null,
+            textInputAction: TextInputAction.done,
+            decoration: InputDecoration(labelText: widget.label),
+            validator: _validate,
+            onFieldSubmitted: (_) => _save(),
+          ),
+        ],
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(onPressed: _save, child: const Text('Save')),
+    ],
+  );
 }
 
 class _InfoRow extends StatelessWidget {
@@ -1293,6 +1360,8 @@ class _ProjectSetupViewState extends State<ProjectSetupView> {
   late final TextEditingController _roll;
   late final TextEditingController _scene;
   late final TextEditingController _shot;
+  late bool _sceneAlphabetic;
+  late bool _shotAlphabetic;
   late List<SlateField> _fields;
 
   @override
@@ -1301,6 +1370,8 @@ class _ProjectSetupViewState extends State<ProjectSetupView> {
     _roll = TextEditingController(text: widget.project.roll);
     _scene = TextEditingController(text: widget.project.scene);
     _shot = TextEditingController(text: widget.project.shot);
+    _sceneAlphabetic = _isAlphabeticCode(widget.project.scene);
+    _shotAlphabetic = _isAlphabeticCode(widget.project.shot);
     _fields = [...widget.project.fields];
   }
 
@@ -1311,7 +1382,21 @@ class _ProjectSetupViewState extends State<ProjectSetupView> {
       _roll.text = widget.project.roll;
       _scene.text = widget.project.scene;
       _shot.text = widget.project.shot;
+      _sceneAlphabetic = _isAlphabeticCode(widget.project.scene);
+      _shotAlphabetic = _isAlphabeticCode(widget.project.shot);
       _fields = [...widget.project.fields];
+    } else {
+      if (oldWidget.project.roll != widget.project.roll) {
+        _roll.text = widget.project.roll;
+      }
+      if (oldWidget.project.scene != widget.project.scene) {
+        _scene.text = widget.project.scene;
+        _sceneAlphabetic = _isAlphabeticCode(widget.project.scene);
+      }
+      if (oldWidget.project.shot != widget.project.shot) {
+        _shot.text = widget.project.shot;
+        _shotAlphabetic = _isAlphabeticCode(widget.project.shot);
+      }
     }
   }
 
@@ -1327,8 +1412,12 @@ class _ProjectSetupViewState extends State<ProjectSetupView> {
     await widget.controller.saveProject(
       widget.project.copyWith(
         roll: _roll.text.trim().isEmpty ? 'A001' : _roll.text.trim(),
-        scene: _scene.text.trim().isEmpty ? '1' : _scene.text.trim(),
-        shot: _shot.text.trim().isEmpty ? '1' : _shot.text.trim(),
+        scene: _scene.text.trim().isEmpty
+            ? (_sceneAlphabetic ? 'A' : '1')
+            : _scene.text.trim(),
+        shot: _shot.text.trim().isEmpty
+            ? (_shotAlphabetic ? 'A' : '1')
+            : _shot.text.trim(),
         fields: fields ?? _fields,
       ),
     );
@@ -1354,6 +1443,7 @@ class _ProjectSetupViewState extends State<ProjectSetupView> {
             child: _CompactInput(
               label: 'Scene',
               controller: _scene,
+              alphabetic: _sceneAlphabetic,
               onSubmitted: () => _save(),
             ),
           ),
@@ -1362,7 +1452,40 @@ class _ProjectSetupViewState extends State<ProjectSetupView> {
             child: _CompactInput(
               label: 'Shot',
               controller: _shot,
+              alphabetic: _shotAlphabetic,
               onSubmitted: () => _save(),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      Row(
+        children: [
+          Expanded(
+            child: _CodeFormatSelector(
+              label: 'Scene format',
+              alphabetic: _sceneAlphabetic,
+              onChanged: (alphabetic) async {
+                setState(() {
+                  _sceneAlphabetic = alphabetic;
+                  _scene.text = alphabetic ? 'A' : '1';
+                });
+                await _save();
+              },
+            ),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: _CodeFormatSelector(
+              label: 'Shot format',
+              alphabetic: _shotAlphabetic,
+              onChanged: (alphabetic) async {
+                setState(() {
+                  _shotAlphabetic = alphabetic;
+                  _shot.text = alphabetic ? 'A' : '1';
+                });
+                await _save();
+              },
             ),
           ),
         ],
@@ -1517,15 +1640,23 @@ class _CompactInput extends StatelessWidget {
     required this.label,
     required this.controller,
     required this.onSubmitted,
+    this.alphabetic = false,
   });
 
   final String label;
   final TextEditingController controller;
   final VoidCallback onSubmitted;
+  final bool alphabetic;
 
   @override
   Widget build(BuildContext context) => TextField(
     controller: controller,
+    keyboardType: alphabetic ? TextInputType.text : TextInputType.number,
+    inputFormatters: [
+      FilteringTextInputFormatter.allow(
+        alphabetic ? RegExp('[a-zA-Z]') : RegExp('[0-9]'),
+      ),
+    ],
     onSubmitted: (_) {
       onSubmitted();
       FocusScope.of(context).unfocus();
@@ -1537,94 +1668,140 @@ class _CompactInput extends StatelessWidget {
   );
 }
 
+class _CodeFormatSelector extends StatelessWidget {
+  const _CodeFormatSelector({
+    required this.label,
+    required this.alphabetic,
+    required this.onChanged,
+  });
+
+  final String label;
+  final bool alphabetic;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) => DropdownButtonFormField<bool>(
+    key: ValueKey('$label-$alphabetic'),
+    initialValue: alphabetic,
+    isExpanded: true,
+    decoration: InputDecoration(
+      labelText: label,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+    ),
+    items: const [
+      DropdownMenuItem(value: false, child: Text('Number')),
+      DropdownMenuItem(value: true, child: Text('Alphabet')),
+    ],
+    onChanged: (value) {
+      if (value != null && value != alphabetic) onChanged(value);
+    },
+  );
+}
+
 Future<SlateField?> _editField(BuildContext context, SlateField? field) async {
-  final label = TextEditingController(text: field?.label ?? '');
-  final fieldValue = TextEditingController(text: field?.value ?? '');
-  double size = field?.size ?? 1;
-  final result = await showDialog<SlateField>(
+  return showDialog<SlateField>(
     context: context,
-    builder: (context) => StatefulBuilder(
-      builder: (context, setDialogState) => AlertDialog(
-        title: Text(field == null ? 'Add slate field' : 'Edit slate field'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+    builder: (_) => _SlateFieldDialog(field: field),
+  );
+}
+
+class _SlateFieldDialog extends StatefulWidget {
+  const _SlateFieldDialog({required this.field});
+
+  final SlateField? field;
+
+  @override
+  State<_SlateFieldDialog> createState() => _SlateFieldDialogState();
+}
+
+class _SlateFieldDialogState extends State<_SlateFieldDialog> {
+  late final TextEditingController _label;
+  late final TextEditingController _fieldValue;
+  late double _size;
+
+  @override
+  void initState() {
+    super.initState();
+    _label = TextEditingController(text: widget.field?.label ?? '');
+    _fieldValue = TextEditingController(text: widget.field?.value ?? '');
+    _size = widget.field?.size ?? 1;
+  }
+
+  @override
+  void dispose() {
+    _label.dispose();
+    _fieldValue.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final fieldLabel = _label.text.trim();
+    if (fieldLabel.isEmpty) return;
+    final field = widget.field;
+    Navigator.pop(
+      context,
+      SlateField(
+        id: field?.id ?? 'custom_${DateTime.now().microsecondsSinceEpoch}',
+        label: fieldLabel,
+        value:
+            field != null &&
+                const ['roll', 'scene', 'shot', 'take'].contains(field.id)
+            ? field.value
+            : _fieldValue.text.trim(),
+        visible: field?.visible ?? true,
+        size: _size,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final field = widget.field;
+    return AlertDialog(
+      title: Text(field == null ? 'Add slate field' : 'Edit slate field'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _label,
+            textCapitalization: TextCapitalization.characters,
+            decoration: const InputDecoration(labelText: 'Slate label'),
+          ),
+          if (field == null ||
+              !const ['roll', 'scene', 'shot', 'take'].contains(field.id)) ...[
+            const SizedBox(height: 10),
             TextField(
-              controller: label,
-              textCapitalization: TextCapitalization.characters,
-              decoration: const InputDecoration(labelText: 'Slate label'),
-            ),
-            if (field == null ||
-                !const [
-                  'roll',
-                  'scene',
-                  'shot',
-                  'take',
-                ].contains(field.id)) ...[
-              const SizedBox(height: 10),
-              TextField(
-                controller: fieldValue,
-                decoration: const InputDecoration(labelText: 'Slate value'),
-              ),
-            ],
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                const Text('Text size'),
-                Expanded(
-                  child: Slider(
-                    value: size,
-                    min: .75,
-                    max: 1.5,
-                    divisions: 3,
-                    label: '${size.toStringAsFixed(2)}×',
-                    onChanged: (value) => setDialogState(() => size = value),
-                  ),
-                ),
-              ],
+              controller: _fieldValue,
+              decoration: const InputDecoration(labelText: 'Slate value'),
             ),
           ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final fieldLabel = label.text.trim();
-              if (fieldLabel.isEmpty) return;
-              Navigator.pop(
-                context,
-                SlateField(
-                  id:
-                      field?.id ??
-                      'custom_${DateTime.now().microsecondsSinceEpoch}',
-                  label: fieldLabel,
-                  value:
-                      field != null &&
-                          const [
-                            'roll',
-                            'scene',
-                            'shot',
-                            'take',
-                          ].contains(field.id)
-                      ? field.value
-                      : fieldValue.text.trim(),
-                  visible: field?.visible ?? true,
-                  size: size,
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              const Text('Text size'),
+              Expanded(
+                child: Slider(
+                  value: _size,
+                  min: .75,
+                  max: 1.5,
+                  divisions: 3,
+                  label: '${_size.toStringAsFixed(2)}×',
+                  onChanged: (value) => setState(() => _size = value),
                 ),
-              );
-            },
-            child: const Text('Save field'),
+              ),
+            ],
           ),
         ],
       ),
-    ),
-  );
-  label.dispose();
-  fieldValue.dispose();
-  return result;
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _save, child: const Text('Save field')),
+      ],
+    );
+  }
 }
 
 class TakeHistoryView extends StatefulWidget {
@@ -1877,121 +2054,212 @@ Future<void> _editTake(
   AppController controller,
   TakeRecord take,
 ) async {
-  final scene = TextEditingController(text: take.scene);
-  final shot = TextEditingController(text: take.shot);
-  final takeNumber = TextEditingController(text: '${take.take}');
-  final timecode = TextEditingController(text: take.timecode);
-  final notes = TextEditingController(text: take.notes);
-  var rating = take.rating;
   final updated = await showDialog<TakeRecord>(
     context: context,
-    builder: (context) => StatefulBuilder(
-      builder: (context, setDialogState) => AlertDialog(
-        title: const Text('Edit take'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    builder: (_) => _TakeEditDialog(take: take),
+  );
+  if (updated != null) await controller.updateTake(updated);
+}
+
+class _TakeEditDialog extends StatefulWidget {
+  const _TakeEditDialog({required this.take});
+
+  final TakeRecord take;
+
+  @override
+  State<_TakeEditDialog> createState() => _TakeEditDialogState();
+}
+
+class _TakeEditDialogState extends State<_TakeEditDialog> {
+  late final TextEditingController _scene;
+  late final TextEditingController _shot;
+  late final TextEditingController _takeNumber;
+  late final TextEditingController _timecode;
+  late final TextEditingController _notes;
+  late bool _sceneAlphabetic;
+  late bool _shotAlphabetic;
+  late TakeRating _rating;
+
+  @override
+  void initState() {
+    super.initState();
+    _scene = TextEditingController(text: widget.take.scene);
+    _shot = TextEditingController(text: widget.take.shot);
+    _takeNumber = TextEditingController(text: '${widget.take.take}');
+    _timecode = TextEditingController(text: widget.take.timecode);
+    _notes = TextEditingController(text: widget.take.notes);
+    _sceneAlphabetic = _isAlphabeticCode(widget.take.scene);
+    _shotAlphabetic = _isAlphabeticCode(widget.take.shot);
+    _rating = widget.take.rating;
+  }
+
+  @override
+  void dispose() {
+    _scene.dispose();
+    _shot.dispose();
+    _takeNumber.dispose();
+    _timecode.dispose();
+    _notes.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final number = int.tryParse(_takeNumber.text);
+    final validScene = _sceneAlphabetic
+        ? RegExp(r'^[a-zA-Z]+$').hasMatch(_scene.text.trim())
+        : RegExp(r'^\d+$').hasMatch(_scene.text.trim());
+    final validShot = _shotAlphabetic
+        ? RegExp(r'^[a-zA-Z]+$').hasMatch(_shot.text.trim())
+        : RegExp(r'^\d+$').hasMatch(_shot.text.trim());
+    if (!validScene ||
+        !validShot ||
+        number == null ||
+        number < 1 ||
+        _timecode.text.trim().isEmpty) {
+      return;
+    }
+    Navigator.pop(
+      context,
+      widget.take.copyWith(
+        scene: _scene.text.trim(),
+        shot: _shot.text.trim(),
+        take: number,
+        timecode: _timecode.text.trim(),
+        rating: _rating,
+        notes: _notes.text.trim(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Edit take'),
+    content: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: scene,
-                      decoration: const InputDecoration(labelText: 'Scene'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      controller: shot,
-                      decoration: const InputDecoration(labelText: 'Shot'),
-                    ),
-                  ),
-                ],
+              Expanded(
+                child: _CodeFormatSelector(
+                  label: 'Scene format',
+                  alphabetic: _sceneAlphabetic,
+                  onChanged: (alphabetic) => setState(() {
+                    _sceneAlphabetic = alphabetic;
+                    _scene.text = alphabetic ? 'A' : '1';
+                  }),
+                ),
               ),
-              const SizedBox(height: 9),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: takeNumber,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Take'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      controller: timecode,
-                      decoration: const InputDecoration(labelText: 'Timecode'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 9),
-              DropdownButtonFormField<TakeRating>(
-                initialValue: rating,
-                decoration: const InputDecoration(labelText: 'Rating'),
-                items: TakeRating.values
-                    .map(
-                      (value) => DropdownMenuItem(
-                        value: value,
-                        child: Text(_ratingLabel(value)),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  if (value != null) setDialogState(() => rating = value);
-                },
-              ),
-              const SizedBox(height: 9),
-              TextField(
-                controller: notes,
-                maxLines: 3,
-                decoration: const InputDecoration(labelText: 'Notes'),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _CodeFormatSelector(
+                  label: 'Shot format',
+                  alphabetic: _shotAlphabetic,
+                  onChanged: (alphabetic) => setState(() {
+                    _shotAlphabetic = alphabetic;
+                    _shot.text = alphabetic ? 'A' : '1';
+                  }),
+                ),
               ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final number = int.tryParse(takeNumber.text);
-              if (scene.text.trim().isEmpty ||
-                  shot.text.trim().isEmpty ||
-                  number == null ||
-                  number < 1 ||
-                  timecode.text.trim().isEmpty) {
-                return;
-              }
-              Navigator.pop(
-                context,
-                take.copyWith(
-                  scene: scene.text.trim(),
-                  shot: shot.text.trim(),
-                  take: number,
-                  timecode: timecode.text.trim(),
-                  rating: rating,
-                  notes: notes.text.trim(),
+          const SizedBox(height: 9),
+          Row(
+            children: [
+              Expanded(
+                child: _CodeTextField(
+                  controller: _scene,
+                  label: 'Scene',
+                  alphabetic: _sceneAlphabetic,
                 ),
-              );
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _CodeTextField(
+                  controller: _shot,
+                  label: 'Shot',
+                  alphabetic: _shotAlphabetic,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 9),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _takeNumber,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: const InputDecoration(labelText: 'Take'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _timecode,
+                  decoration: const InputDecoration(labelText: 'Timecode'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 9),
+          DropdownButtonFormField<TakeRating>(
+            initialValue: _rating,
+            decoration: const InputDecoration(labelText: 'Rating'),
+            items: TakeRating.values
+                .map(
+                  (value) => DropdownMenuItem(
+                    value: value,
+                    child: Text(_ratingLabel(value)),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              if (value != null) setState(() => _rating = value);
             },
-            child: const Text('Save'),
+          ),
+          const SizedBox(height: 9),
+          TextField(
+            controller: _notes,
+            maxLines: 3,
+            decoration: const InputDecoration(labelText: 'Notes'),
           ),
         ],
       ),
     ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(onPressed: _save, child: const Text('Save')),
+    ],
   );
-  scene.dispose();
-  shot.dispose();
-  takeNumber.dispose();
-  timecode.dispose();
-  notes.dispose();
-  if (updated != null) await controller.updateTake(updated);
+}
+
+class _CodeTextField extends StatelessWidget {
+  const _CodeTextField({
+    required this.controller,
+    required this.label,
+    required this.alphabetic,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final bool alphabetic;
+
+  @override
+  Widget build(BuildContext context) => TextField(
+    controller: controller,
+    keyboardType: alphabetic ? TextInputType.text : TextInputType.number,
+    inputFormatters: [
+      FilteringTextInputFormatter.allow(
+        alphabetic ? RegExp('[a-zA-Z]') : RegExp('[0-9]'),
+      ),
+    ],
+    decoration: InputDecoration(labelText: label),
+  );
 }
 
 Future<void> _deleteTake(
@@ -2738,7 +3006,28 @@ class _SectionEyebrow extends StatelessWidget {
 
 String _two(int value) => value.toString().padLeft(2, '0');
 
+bool _isAlphabeticCode(String value) => RegExp(r'^[a-zA-Z]+$').hasMatch(value);
+
 String _incrementCode(String value) {
+  if (_isAlphabeticCode(value)) {
+    final letters = List<int>.from(value.toUpperCase().codeUnits);
+    var index = letters.length - 1;
+    while (index >= 0 && letters[index] == 90) {
+      letters[index] = 65;
+      index--;
+    }
+    if (index < 0) {
+      letters.insert(0, 65);
+    } else {
+      letters[index]++;
+    }
+    return String.fromCharCodes(letters);
+  }
+
+  if (RegExp(r'^\d+$').hasMatch(value)) {
+    return (int.parse(value) + 1).toString().padLeft(value.length, '0');
+  }
+
   final match = RegExp(r'^(.*?)(\d+)$').firstMatch(value);
   if (match == null) return '${value}2';
   final digits = match.group(2)!;
