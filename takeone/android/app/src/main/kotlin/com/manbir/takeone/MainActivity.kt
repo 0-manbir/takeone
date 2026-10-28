@@ -1,4 +1,4 @@
-package com.example.takeone
+package com.manbir.takeone
 
 import io.flutter.embedding.android.FlutterActivity
 
