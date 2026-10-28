@@ -4,11 +4,10 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'data/app_data.dart';
+import 'data/project_workbook.dart';
 
 const _defaultAccent = Color(0xFFC9A56A);
 
@@ -810,7 +809,7 @@ class _ProjectWorkspaceState extends State<ProjectWorkspace> {
           ),
           actions: [
             IconButton(
-              tooltip: 'Export project PDF',
+              tooltip: 'Export project Excel file',
               onPressed: () =>
                   _exportProject(context, widget.controller, project),
               icon: const Icon(Icons.ios_share_rounded),
@@ -2985,203 +2984,29 @@ Future<void> _exportProject(
 ) async {
   try {
     final takes = await controller.store.getTakes(project.id);
-    final document = pw.Document();
-    document.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(38),
-        build: (context) => [
-          pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            children: [
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    'TAKEONE',
-                    style: pw.TextStyle(
-                      color: PdfColor.fromHex('#B48F56'),
-                      fontSize: 10,
-                      fontWeight: pw.FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  pw.SizedBox(height: 7),
-                  pw.Text(
-                    project.name,
-                    style: pw.TextStyle(
-                      fontSize: 24,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  pw.SizedBox(height: 5),
-                  pw.Text(
-                    'Production report  ·  ${project.productionDate}',
-                    style: pw.TextStyle(
-                      color: PdfColor.fromHex('#777777'),
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
-              ),
-              pw.Text(
-                '${takes.length} TAKES',
-                style: pw.TextStyle(
-                  color: PdfColor.fromHex('#777777'),
-                  fontSize: 9,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            ],
+    final fileName =
+        '${project.name.replaceAll(RegExp(r'[^a-zA-Z0-9]+'), '_')}_take_log.xlsx';
+    await SharePlus.instance.share(
+      ShareParams(
+        subject: '${project.name} take log',
+        files: [
+          XFile.fromData(
+            Uint8List.fromList(buildProjectWorkbook(project, takes)),
+            name: fileName,
+            mimeType:
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           ),
-          pw.SizedBox(height: 21),
-          pw.Container(
-            padding: const pw.EdgeInsets.all(14),
-            decoration: pw.BoxDecoration(
-              color: PdfColor.fromHex('#F4F1EB'),
-              borderRadius: pw.BorderRadius.circular(8),
-            ),
-            child: pw.Wrap(
-              spacing: 30,
-              runSpacing: 14,
-              children: [
-                _pdfInfo('DIRECTOR', project.director),
-                _pdfInfo('DIRECTOR OF PHOTOGRAPHY', project.dop),
-                _pdfInfo('LOCATION', project.location),
-              ],
-            ),
-          ),
-          if (project.notes.isNotEmpty) ...[
-            pw.SizedBox(height: 14),
-            pw.Text(
-              'PRODUCTION NOTES',
-              style: pw.TextStyle(
-                color: PdfColor.fromHex('#888888'),
-                fontSize: 8,
-                fontWeight: pw.FontWeight.bold,
-                letterSpacing: 1,
-              ),
-            ),
-            pw.SizedBox(height: 5),
-            pw.Text(project.notes, style: const pw.TextStyle(fontSize: 10)),
-          ],
-          pw.SizedBox(height: 23),
-          pw.Text(
-            'TAKE HISTORY',
-            style: pw.TextStyle(
-              fontSize: 11,
-              fontWeight: pw.FontWeight.bold,
-              letterSpacing: 1,
-            ),
-          ),
-          pw.SizedBox(height: 9),
-          if (takes.isEmpty)
-            pw.Text(
-              'No takes have been recorded.',
-              style: pw.TextStyle(
-                color: PdfColor.fromHex('#777777'),
-                fontSize: 10,
-              ),
-            )
-          else
-            pw.TableHelper.fromTextArray(
-              headers: [
-                'SCENE',
-                'SHOT',
-                'TAKE',
-                'TIMECODE',
-                'DATE / TIME',
-                'RATING',
-                'NOTES',
-              ],
-              data: takes
-                  .map(
-                    (take) => [
-                      take.scene,
-                      take.shot,
-                      take.take.toString(),
-                      take.timecode,
-                      DateFormat('MMM d, yyyy  h:mm a').format(take.createdAt),
-                      _ratingLabel(take.rating),
-                      take.notes,
-                    ],
-                  )
-                  .toList(),
-              headerStyle: pw.TextStyle(
-                color: PdfColors.white,
-                fontSize: 8,
-                fontWeight: pw.FontWeight.bold,
-              ),
-              headerDecoration: pw.BoxDecoration(
-                color: PdfColor.fromHex('#272923'),
-              ),
-              cellStyle: const pw.TextStyle(fontSize: 8),
-              cellPadding: const pw.EdgeInsets.symmetric(
-                horizontal: 6,
-                vertical: 7,
-              ),
-              columnWidths: {
-                0: const pw.FixedColumnWidth(38),
-                1: const pw.FixedColumnWidth(36),
-                2: const pw.FixedColumnWidth(35),
-                3: const pw.FixedColumnWidth(58),
-                4: const pw.FixedColumnWidth(82),
-                5: const pw.FixedColumnWidth(56),
-              },
-              oddRowDecoration: pw.BoxDecoration(
-                color: PdfColor.fromHex('#F7F6F3'),
-              ),
-            ),
         ],
-        footer: (context) => pw.Container(
-          alignment: pw.Alignment.centerRight,
-          margin: const pw.EdgeInsets.only(top: 16),
-          child: pw.Text(
-            'Generated ${DateFormat('MMM d, yyyy  h:mm a').format(DateTime.now())}  ·  Page ${context.pageNumber}',
-            style: pw.TextStyle(
-              color: PdfColor.fromHex('#888888'),
-              fontSize: 8,
-            ),
-          ),
-        ),
       ),
-    );
-    await Printing.sharePdf(
-      bytes: await document.save(),
-      filename:
-          '${project.name.replaceAll(RegExp(r'[^a-zA-Z0-9]+'), '_')}_take_log.pdf',
     );
   } catch (error) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not export project PDF: $error')),
+        SnackBar(content: Text('Could not export project Excel file: $error')),
       );
     }
   }
 }
-
-pw.Widget _pdfInfo(String label, String value) => pw.SizedBox(
-  width: 210,
-  child: pw.Column(
-    crossAxisAlignment: pw.CrossAxisAlignment.start,
-    children: [
-      pw.Text(
-        label,
-        style: pw.TextStyle(
-          color: PdfColor.fromHex('#777777'),
-          fontSize: 7,
-          fontWeight: pw.FontWeight.bold,
-          letterSpacing: 1,
-        ),
-      ),
-      pw.SizedBox(height: 4),
-      pw.Text(
-        value.isEmpty ? '—' : value,
-        style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
-      ),
-    ],
-  ),
-);
 
 Future<void> _showAppearance(
   BuildContext context,
