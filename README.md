@@ -4,7 +4,7 @@ Take One is an Android digital clapboard app designed to make film production ea
 
 ## Download
 
-<a href="https://github.com/0-manbir/takeone/releases/latest/download/takeone.apk" target="_blank">Download Latest Release</a><br><br>
+<a href="https://github.com/0-manbir/takeone/releases/download/v1.0.0/take-one-v1.0.0.apk" target="_blank">Download Latest Release</a><br><br>
 
 
 ## Screenshots
