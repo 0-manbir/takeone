@@ -1062,6 +1062,8 @@ class _SlateValue extends StatelessWidget {
     required this.value,
     required this.accent,
     this.size = 1,
+    this.labelFontSize = 8,
+    this.valueFontSize = 18,
     this.onTap,
   });
 
@@ -1069,6 +1071,8 @@ class _SlateValue extends StatelessWidget {
   final String value;
   final Color accent;
   final double size;
+  final double labelFontSize;
+  final double valueFontSize;
   final VoidCallback? onTap;
 
   @override
@@ -1094,21 +1098,28 @@ class _SlateValue extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 8,
+                fontSize: labelFontSize,
                 color: accent,
                 letterSpacing: 1.1,
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 3),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontWeight: FontWeight.w700,
-              ).copyWith(fontSize: 18 * size),
+            SizedBox(
+              width: double.infinity,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                    fontSize: valueFontSize * size,
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -2369,13 +2380,16 @@ class _ClapboardScreenState extends State<ClapboardScreen>
       } catch (error) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not play slate sound: $error')),
+            SnackBar(
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 82),
+              content: Text('Could not play slate sound: $error'),
+            ),
           );
         }
       }
     }
-    await Future<void>.delayed(const Duration(milliseconds: 180));
-    if (mounted) setState(() => _clapping = false);
+    await Future<void>.delayed(const Duration(seconds: 3));
     if (!mounted) return;
     final rating = await showDialog<TakeRating>(
       context: context,
@@ -2447,6 +2461,7 @@ class _ClapboardScreenState extends State<ClapboardScreen>
         ),
       ),
     );
+    if (mounted) setState(() => _clapping = false);
     if (rating == null || !mounted) return;
     var nextScene = activeProject.scene;
     var nextShot = activeProject.shot;
@@ -2461,12 +2476,12 @@ class _ClapboardScreenState extends State<ClapboardScreen>
           content: const Text('Choose the next slate position.'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Next shot'),
-            ),
-            FilledButton(
               onPressed: () => Navigator.pop(context, true),
               child: const Text('Next scene'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Next shot'),
             ),
           ],
         ),
@@ -2504,6 +2519,8 @@ class _ClapboardScreenState extends State<ClapboardScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 82),
             content: Text('${_ratingLabel(rating)} take saved'),
             duration: const Duration(milliseconds: 500),
           ),
@@ -2511,9 +2528,13 @@ class _ClapboardScreenState extends State<ClapboardScreen>
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Could not save take: $error')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 82),
+            content: Text('Could not save take: $error'),
+          ),
+        );
       }
     }
   }
@@ -2531,7 +2552,9 @@ class _ClapboardScreenState extends State<ClapboardScreen>
     if (activeProject == null) {
       return const Scaffold(body: Center(child: Text('Project unavailable')));
     }
-    final fields = activeProject.fields;
+    final fields = activeProject.fields
+        .where((field) => field.visible)
+        .toList();
     return AnimatedBuilder(
       animation: _flash,
       builder: (context, _) => Scaffold(
@@ -2539,31 +2562,57 @@ class _ClapboardScreenState extends State<ClapboardScreen>
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final landscape = constraints.maxWidth >= constraints.maxHeight;
-              final large = constraints.maxHeight > 400;
+              final compact = constraints.maxHeight < 420;
+              final panelCount = fields.isEmpty
+                  ? 1
+                  : fields.length.clamp(1, 4).toInt();
+              final rowCount = fields.isEmpty
+                  ? 1
+                  : (fields.length / panelCount).ceil();
+              const panelGap = 12.0;
+              final panelWidth =
+                  (constraints.maxWidth - panelGap * (panelCount - 1) - 24) /
+                  panelCount;
+              final panelHeight =
+                  (constraints.maxHeight -
+                          panelGap * (rowCount - 1) -
+                          (compact ? 145 : 190))
+                      .clamp(rowCount * 90.0, double.infinity) /
+                  rowCount;
+              final panelValueSize = (panelHeight * .42)
+                  .clamp(38.0, 76.0)
+                  .toDouble();
               final slatePanel = Container(
                 width: double.infinity,
-                padding: EdgeInsets.all(large ? 19 : 11),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(13),
+                  borderRadius: BorderRadius.circular(18),
                   border: Border.all(
                     color: Theme.of(
                       context,
                     ).colorScheme.onSurface.withValues(alpha: .09),
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: GridView.count(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 10,
-                        mainAxisSpacing: 10,
-                        childAspectRatio: 2.5,
+                child: fields.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No slate fields are visible',
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                            fontSize: 20,
+                          ),
+                        ),
+                      )
+                    : GridView.count(
+                        padding: EdgeInsets.zero,
+                        crossAxisCount: panelCount,
+                        crossAxisSpacing: panelGap,
+                        mainAxisSpacing: panelGap,
+                        childAspectRatio: panelWidth / panelHeight,
                         children: fields
-                            .where((field) => field.visible)
                             .map(
                               (field) => _SlateValue(
                                 label: field.label,
@@ -2574,6 +2623,8 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                                 ),
                                 accent: Color(widget.controller.accent),
                                 size: field.size,
+                                labelFontSize: 13,
+                                valueFontSize: panelValueSize,
                                 onTap: _slatePositionEditor(
                                   context,
                                   widget.controller,
@@ -2584,52 +2635,20 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                             )
                             .toList(),
                       ),
-                    ),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.circle,
-                          color: Color(0xFF68C991),
-                          size: 7,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          _timecode,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontFeatures: [FontFeature.tabularFigures()],
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const Spacer(),
-                        Flexible(
-                          child: Text(
-                            DateFormat('MMM d, yyyy').format(_now),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.end,
-                            style: const TextStyle(fontSize: 9),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
               );
               final takeStepper = Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   SizedBox(
-                    width: 28,
-                    height: 36,
+                    width: compact ? 40 : 48,
+                    height: compact ? 48 : 64,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(18),
                       onTap: () => _manualTake(-1),
                       child: Icon(
                         Icons.remove_circle_outline,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        size: 17,
+                        size: compact ? 24 : 30,
                       ),
                     ),
                   ),
@@ -2637,22 +2656,22 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                     activeProject.take.toString().padLeft(2, '0'),
                     style: TextStyle(
                       color: Color(widget.controller.accent),
-                      fontSize: landscape && large ? 38 : 29,
+                      fontSize: compact ? 36 : 48,
                       height: 1,
                       fontWeight: FontWeight.w800,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
                   SizedBox(
-                    width: 28,
-                    height: 36,
+                    width: compact ? 40 : 48,
+                    height: compact ? 48 : 64,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(18),
                       onTap: () => _manualTake(1),
                       child: Icon(
                         Icons.add_circle_outline,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        size: 17,
+                        size: compact ? 24 : 30,
                       ),
                     ),
                   ),
@@ -2660,45 +2679,27 @@ class _ClapboardScreenState extends State<ClapboardScreen>
               );
               final clapButton = SizedBox(
                 width: double.infinity,
-                height: landscape && large ? 56 : 44,
+                height: compact ? 54 : 72,
                 child: FilledButton.icon(
                   onPressed: _clapping ? null : _clap,
                   icon: Icon(
                     _clapping ? Icons.check_rounded : Icons.campaign_rounded,
-                    size: 19,
+                    size: compact ? 24 : 30,
                   ),
                   label: Text(_clapping ? 'MARK!' : 'CLAP'),
                   style: FilledButton.styleFrom(
                     backgroundColor: Color(widget.controller.accent),
                     foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                    textStyle: const TextStyle(
-                      letterSpacing: 1.6,
+                    textStyle: TextStyle(
+                      letterSpacing: 2,
                       fontWeight: FontWeight.w900,
-                      fontSize: 13,
+                      fontSize: compact ? 18 : 22,
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                 ),
-              );
-              final landscapeControls = Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'ROLLING TAKE',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontSize: 8,
-                      letterSpacing: 1.6,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  takeStepper,
-                  SizedBox(height: large ? 13 : 6),
-                  clapButton,
-                ],
               );
               return Stack(
                 children: [
@@ -2713,33 +2714,21 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                   ),
                   Padding(
                     padding: EdgeInsets.fromLTRB(
-                      large ? 24 : 15,
-                      large ? 14 : 7,
-                      large ? 24 : 15,
                       12,
+                      compact ? 3 : 8,
+                      12,
+                      compact ? 4 : 10,
                     ),
                     child: Column(
                       children: [
                         Row(
                           children: [
-                            IconButton(
-                              onPressed: () => Navigator.pop(context),
-                              icon: Icon(
-                                Icons.close_rounded,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                              tooltip: 'Close slate',
-                              visualDensity: VisualDensity.compact,
-                            ),
-                            const SizedBox(width: 9),
                             Icon(
                               Icons.movie_creation_outlined,
                               color: Color(widget.controller.accent),
-                              size: 18,
+                              size: 26,
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Text(
                                 activeProject.name.toUpperCase(),
@@ -2748,99 +2737,87 @@ class _ClapboardScreenState extends State<ClapboardScreen>
                                 style: TextStyle(
                                   color: Theme.of(
                                     context,
-                                  ).colorScheme.onSurface.withValues(alpha: .8),
+                                  ).colorScheme.onSurface,
                                   fontWeight: FontWeight.w700,
-                                  letterSpacing: 2,
-                                  fontSize: large ? 12 : 10,
+                                  letterSpacing: 2.2,
+                                  fontSize: compact ? 15 : 18,
                                 ),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Text(
+                                  _timecode,
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures(),
+                                    ],
+                                    fontSize: compact ? 20 : 27,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                Text(
+                                  DateFormat('EEEE, MMM d, yyyy').format(_now),
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                    fontSize: compact ? 10 : 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Expanded(child: Container()),
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.close_rounded, size: 26),
+                                  Text(
+                                    'Close',
+                                    style: TextStyle(
+                                      fontSize: compact ? 14 : 16,
+                                      letterSpacing: 1.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
+                        SizedBox(height: compact ? 6 : 12),
                         Expanded(
-                          child: landscape
-                              ? Row(
-                                  children: [
-                                    Expanded(flex: 5, child: slatePanel),
-                                    const SizedBox(width: 13),
-                                    Expanded(flex: 3, child: landscapeControls),
-                                  ],
-                                )
-                              : Column(
-                                  children: [
-                                    Expanded(flex: 5, child: slatePanel),
-                                    const SizedBox(height: 9),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            child: Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Text(
-                                                  'ROLLING TAKE',
-                                                  style: TextStyle(
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .onSurfaceVariant,
-                                                    fontSize: 8,
-                                                    letterSpacing: 1.4,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 4),
-                                                takeStepper,
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(width: 9),
-                                          Expanded(flex: 2, child: clapButton),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                        ),
-                        const SizedBox(height: 6),
-                        if (landscape)
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _BottomMeta(
-                                  label: 'DIRECTOR',
-                                  value: activeProject.director,
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: _BottomMeta(
-                                  label: 'DOP',
-                                  value: activeProject.dop,
-                                ),
-                              ),
-                            ],
-                          )
-                        else
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _BottomMeta(
-                                  label: 'DIRECTOR',
-                                  value: activeProject.director,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _BottomMeta(
-                                  label: 'DOP',
-                                  value: activeProject.dop,
-                                ),
-                              ),
-                            ],
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: slatePanel,
                           ),
+                        ),
+                        SizedBox(height: compact ? 6 : 10),
+                        Row(
+                          children: [
+                            Text(
+                              'TAKE',
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                                fontSize: compact ? 9 : 11,
+                                letterSpacing: 1.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            SizedBox(width: compact ? 2 : 8),
+                            takeStepper,
+                            SizedBox(width: compact ? 8 : 14),
+                            Expanded(child: clapButton),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -2882,39 +2859,6 @@ class _StatusTag extends StatelessWidget {
         ),
       ],
     ),
-  );
-}
-
-class _BottomMeta extends StatelessWidget {
-  const _BottomMeta({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Text(
-        '$label  ',
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-          fontSize: 7,
-          letterSpacing: 1,
-        ),
-      ),
-      Flexible(
-        child: Text(
-          value.isEmpty ? '—' : value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-            fontSize: 9,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    ],
   );
 }
 

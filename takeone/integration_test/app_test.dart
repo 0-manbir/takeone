@@ -10,6 +10,16 @@ void main() {
   testWidgets('creates a project, records a take, and shows its history', (
     tester,
   ) async {
+    Future<void> waitForElapsedTime(Duration duration) async {
+      final steps = duration.inMilliseconds ~/ 100;
+      for (var step = 0; step < steps; step++) {
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 100)),
+        );
+      }
+    }
+
     Future<void> removeTestProject() async {
       final projects = await LocalStore.instance.getProjects();
       for (final project in projects.where(
@@ -63,6 +73,7 @@ void main() {
 
     expect(find.text('CLAP'), findsOneWidget);
     await tester.tap(find.text('CLAP'));
+    await waitForElapsedTime(const Duration(seconds: 3));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Bad take'));
     await tester.pumpAndSettle();
@@ -77,6 +88,7 @@ void main() {
     expect(project.take, 2);
 
     await tester.tap(find.text('CLAP'));
+    await waitForElapsedTime(const Duration(seconds: 3));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Moving on'));
     await tester.pumpAndSettle();
@@ -87,7 +99,7 @@ void main() {
     );
     expect(project.shot, 'B');
 
-    await tester.tap(find.byTooltip('Close slate'));
+    await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Takes'));
     await tester.pumpAndSettle();
