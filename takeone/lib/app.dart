@@ -9,7 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'data/app_data.dart';
 import 'data/project_workbook.dart';
 
-const _defaultAccent = Color(0xFFC9A56A);
+const _defaultAccent = Color(0xFF6D9FE4);
 
 class AppController extends ChangeNotifier {
   AppController() {
@@ -18,7 +18,7 @@ class AppController extends ChangeNotifier {
 
   final store = LocalStore.instance;
   List<FilmProject> projects = [];
-  String theme = 'dark';
+  String theme = 'light';
   String fontStyle = 'modern';
   int accent = _defaultAccent.toARGB32();
   bool loading = true;
@@ -314,76 +314,6 @@ class HomeScreen extends StatelessWidget {
               ],
             ),
     ),
-  );
-}
-
-class _OverviewCard extends StatelessWidget {
-  const _OverviewCard({required this.projects});
-
-  final List<FilmProject> projects;
-
-  @override
-  Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(17),
-      child: Row(
-        children: [
-          const _Metric(label: 'IN PRODUCTION', value: 'READY'),
-          const Spacer(),
-          Container(
-            height: 36,
-            width: 1,
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: .1),
-          ),
-          const Spacer(),
-          _Metric(label: 'PROJECTS', value: '${projects.length}'),
-          const Spacer(),
-          Container(
-            height: 36,
-            width: 1,
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: .1),
-          ),
-          const Spacer(),
-          const _Metric(label: 'ON SET', value: 'OFFLINE'),
-        ],
-      ),
-    ),
-  );
-}
-
-class _Metric extends StatelessWidget {
-  const _Metric({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        value,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w800,
-          letterSpacing: .4,
-        ),
-      ),
-      const SizedBox(height: 5),
-      Text(
-        label,
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-          fontSize: 8,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1,
-        ),
-      ),
-    ],
   );
 }
 
@@ -1303,52 +1233,6 @@ class _SlatePositionDialogState extends State<_SlatePositionDialog> {
       ),
       FilledButton(onPressed: _save, child: const Text('Save')),
     ],
-  );
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
-    child: Row(
-      children: [
-        Icon(
-          icon,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-          size: 18,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontSize: 12,
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Flexible(
-          child: Text(
-            value,
-            textAlign: TextAlign.end,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-          ),
-        ),
-      ],
-    ),
   );
 }
 
@@ -2321,6 +2205,7 @@ class _ClapboardScreenState extends State<ClapboardScreen>
   Timer? _clock;
   DateTime _now = DateTime.now();
   bool _clapping = false;
+  bool _closing = false;
 
   FilmProject? get project {
     for (final value in widget.controller.projects) {
@@ -2352,14 +2237,22 @@ class _ClapboardScreenState extends State<ClapboardScreen>
     if (mounted) setState(() {});
   }
 
+  Future<void> _closeSlate() async {
+    if (_closing) return;
+    _closing = true;
+    await SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.portraitUp,
+    ]);
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    if (mounted) Navigator.of(context).pop();
+  }
+
   @override
   void dispose() {
     widget.controller.removeListener(_controllerChanged);
     _clock?.cancel();
     _flash.dispose();
     _player.dispose();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
     super.dispose();
   }
 
@@ -2554,311 +2447,288 @@ class _ClapboardScreenState extends State<ClapboardScreen>
     final fields = activeProject.fields
         .where((field) => field.visible)
         .toList();
-    return AnimatedBuilder(
-      animation: _flash,
-      builder: (context, _) => Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final compact = constraints.maxHeight < 420;
-              final panelCount = fields.isEmpty
-                  ? 1
-                  : fields.length.clamp(1, 4).toInt();
-              final rowCount = fields.isEmpty
-                  ? 1
-                  : (fields.length / panelCount).ceil();
-              const panelGap = 12.0;
-              final panelWidth =
-                  (constraints.maxWidth - panelGap * (panelCount - 1) - 24) /
-                  panelCount;
-              final panelHeight =
-                  (constraints.maxHeight -
-                          panelGap * (rowCount - 1) -
-                          (compact ? 145 : 190))
-                      .clamp(rowCount * 90.0, double.infinity) /
-                  rowCount;
-              final panelValueSize = (panelHeight * .42)
-                  .clamp(38.0, 76.0)
-                  .toDouble();
-              final slatePanel = Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: .09),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _closeSlate();
+      },
+      child: AnimatedBuilder(
+        animation: _flash,
+        builder: (context, _) => Scaffold(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          body: SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxHeight < 420;
+                final panelCount = fields.isEmpty
+                    ? 1
+                    : fields.length.clamp(1, 4).toInt();
+                final rowCount = fields.isEmpty
+                    ? 1
+                    : (fields.length / panelCount).ceil();
+                const panelGap = 12.0;
+                final panelWidth =
+                    (constraints.maxWidth - panelGap * (panelCount - 1) - 24) /
+                    panelCount;
+                final panelHeight =
+                    (constraints.maxHeight -
+                            panelGap * (rowCount - 1) -
+                            (compact ? 145 : 190))
+                        .clamp(rowCount * 90.0, double.infinity) /
+                    rowCount;
+                final panelValueSize = (panelHeight * .42)
+                    .clamp(38.0, 76.0)
+                    .toDouble();
+                final slatePanel = Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: .09),
+                    ),
                   ),
-                ),
-                child: fields.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No slate fields are visible',
-                          style: TextStyle(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                            fontSize: 20,
+                  child: fields.isEmpty
+                      ? Center(
+                          child: Text(
+                            'No slate fields are visible',
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                              fontSize: 20,
+                            ),
                           ),
-                        ),
-                      )
-                    : GridView.count(
-                        padding: EdgeInsets.zero,
-                        crossAxisCount: panelCount,
-                        crossAxisSpacing: panelGap,
-                        mainAxisSpacing: panelGap,
-                        childAspectRatio: panelWidth / panelHeight,
-                        children: fields
-                            .map(
-                              (field) => _SlateValue(
-                                label: field.label,
-                                value: _fieldValue(
-                                  activeProject,
-                                  field.id,
-                                  customValue: field.value,
-                                ),
-                                accent: Color(widget.controller.accent),
-                                size: field.size,
-                                labelFontSize: 13,
-                                valueFontSize: panelValueSize,
-                                onTap: _slatePositionEditor(
-                                  context,
-                                  widget.controller,
-                                  activeProject,
-                                  field.id,
-                                ),
-                              ),
-                            )
-                            .toList(),
-                      ),
-              );
-              final takeStepper = Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: compact ? 40 : 48,
-                    height: compact ? 48 : 64,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(18),
-                      onTap: () => _manualTake(-1),
-                      child: Icon(
-                        Icons.remove_circle_outline,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        size: compact ? 24 : 30,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    activeProject.take.toString().padLeft(2, '0'),
-                    style: TextStyle(
-                      color: Color(widget.controller.accent),
-                      fontSize: compact ? 36 : 48,
-                      height: 1,
-                      fontWeight: FontWeight.w800,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                  SizedBox(
-                    width: compact ? 40 : 48,
-                    height: compact ? 48 : 64,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(18),
-                      onTap: () => _manualTake(1),
-                      child: Icon(
-                        Icons.add_circle_outline,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        size: compact ? 24 : 30,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-              final clapButton = SizedBox(
-                width: double.infinity,
-                height: compact ? 54 : 72,
-                child: FilledButton.icon(
-                  onPressed: _clapping ? null : _clap,
-                  icon: Icon(
-                    _clapping ? Icons.check_rounded : Icons.campaign_rounded,
-                    size: compact ? 24 : 30,
-                  ),
-                  label: Text(_clapping ? 'MARK!' : 'CLAP'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Color(widget.controller.accent),
-                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                    textStyle: TextStyle(
-                      letterSpacing: 2,
-                      fontWeight: FontWeight.w900,
-                      fontSize: compact ? 18 : 22,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              );
-              return Stack(
-                children: [
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: ColoredBox(
-                        color: Color(
-                          widget.controller.accent,
-                        ).withValues(alpha: _flash.value * .16),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      12,
-                      compact ? 3 : 8,
-                      12,
-                      compact ? 4 : 10,
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.movie_creation_outlined,
-                              color: Color(widget.controller.accent),
-                              size: 26,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                activeProject.name.toUpperCase(),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Theme.of(
+                        )
+                      : GridView.count(
+                          padding: EdgeInsets.zero,
+                          crossAxisCount: panelCount,
+                          crossAxisSpacing: panelGap,
+                          mainAxisSpacing: panelGap,
+                          childAspectRatio: panelWidth / panelHeight,
+                          children: fields
+                              .map(
+                                (field) => _SlateValue(
+                                  label: field.label,
+                                  value: _fieldValue(
+                                    activeProject,
+                                    field.id,
+                                    customValue: field.value,
+                                  ),
+                                  accent: Color(widget.controller.accent),
+                                  size: field.size,
+                                  labelFontSize: 13,
+                                  valueFontSize: panelValueSize,
+                                  onTap: _slatePositionEditor(
                                     context,
-                                  ).colorScheme.onSurface,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 2.2,
-                                  fontSize: compact ? 15 : 18,
+                                    widget.controller,
+                                    activeProject,
+                                    field.id,
+                                  ),
                                 ),
+                              )
+                              .toList(),
+                        ),
+                );
+                final takeStepper = Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: compact ? 40 : 48,
+                      height: compact ? 48 : 64,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(18),
+                        onTap: () => _manualTake(-1),
+                        child: Icon(
+                          Icons.remove_circle_outline,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          size: compact ? 24 : 30,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      activeProject.take.toString().padLeft(2, '0'),
+                      style: TextStyle(
+                        color: Color(widget.controller.accent),
+                        fontSize: compact ? 36 : 48,
+                        height: 1,
+                        fontWeight: FontWeight.w800,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    SizedBox(
+                      width: compact ? 40 : 48,
+                      height: compact ? 48 : 64,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(18),
+                        onTap: () => _manualTake(1),
+                        child: Icon(
+                          Icons.add_circle_outline,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          size: compact ? 24 : 30,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+                final clapButton = SizedBox(
+                  width: double.infinity,
+                  height: compact ? 54 : 72,
+                  child: FilledButton.icon(
+                    onPressed: _clapping ? null : _clap,
+                    icon: Icon(
+                      _clapping ? Icons.check_rounded : Icons.campaign_rounded,
+                      size: compact ? 24 : 30,
+                    ),
+                    label: Text(_clapping ? 'MARK!' : 'CLAP'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Color(widget.controller.accent),
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                      textStyle: TextStyle(
+                        letterSpacing: 2,
+                        fontWeight: FontWeight.w900,
+                        fontSize: compact ? 18 : 22,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                );
+                return Stack(
+                  children: [
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: ColoredBox(
+                          color: Color(
+                            widget.controller.accent,
+                          ).withValues(alpha: _flash.value * .16),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        12,
+                        compact ? 3 : 8,
+                        12,
+                        compact ? 4 : 10,
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.movie_creation_outlined,
+                                color: Color(widget.controller.accent),
+                                size: 26,
                               ),
-                            ),
-                            const SizedBox(width: 14),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Text(
-                                  _timecode,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  activeProject.name.toUpperCase(),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     color: Theme.of(
                                       context,
                                     ).colorScheme.onSurface,
-                                    fontFeatures: const [
-                                      FontFeature.tabularFigures(),
-                                    ],
-                                    fontSize: compact ? 20 : 27,
-                                    fontWeight: FontWeight.w800,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 2.2,
+                                    fontSize: compact ? 15 : 18,
                                   ),
                                 ),
-                                Text(
-                                  DateFormat('EEEE, MMM d, yyyy').format(_now),
-                                  style: TextStyle(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                    fontSize: compact ? 10 : 13,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Expanded(child: Container()),
-                            ElevatedButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: Row(
+                              ),
+                              const SizedBox(width: 14),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.close_rounded, size: 26),
                                   Text(
-                                    'Close',
+                                    _timecode,
                                     style: TextStyle(
-                                      fontSize: compact ? 14 : 16,
-                                      letterSpacing: 1.5,
-                                      fontWeight: FontWeight.w700,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface,
+                                      fontFeatures: const [
+                                        FontFeature.tabularFigures(),
+                                      ],
+                                      fontSize: compact ? 20 : 27,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  Text(
+                                    DateFormat(
+                                      'EEEE, MMM d, yyyy',
+                                    ).format(_now),
+                                    style: TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                      fontSize: compact ? 10 : 13,
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: compact ? 6 : 12),
-                        Expanded(
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: slatePanel,
-                          ),
-                        ),
-                        SizedBox(height: compact ? 6 : 10),
-                        Row(
-                          children: [
-                            Text(
-                              'TAKE',
-                              style: TextStyle(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                                fontSize: compact ? 9 : 11,
-                                letterSpacing: 1.5,
-                                fontWeight: FontWeight.w700,
+                              Expanded(child: Container()),
+                              ElevatedButton(
+                                onPressed: _closeSlate,
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.close_rounded, size: 26),
+                                    Text(
+                                      'Close',
+                                      style: TextStyle(
+                                        fontSize: compact ? 14 : 16,
+                                        letterSpacing: 1.5,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
+                            ],
+                          ),
+                          SizedBox(height: compact ? 6 : 12),
+                          Expanded(
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: slatePanel,
                             ),
-                            SizedBox(width: compact ? 2 : 8),
-                            takeStepper,
-                            SizedBox(width: compact ? 8 : 14),
-                            Expanded(child: clapButton),
-                          ],
-                        ),
-                      ],
+                          ),
+                          SizedBox(height: compact ? 6 : 10),
+                          Row(
+                            children: [
+                              Text(
+                                'TAKE',
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                  fontSize: compact ? 9 : 11,
+                                  letterSpacing: 1.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              SizedBox(width: compact ? 2 : 8),
+                              takeStepper,
+                              SizedBox(width: compact ? 8 : 14),
+                              Expanded(child: clapButton),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              );
-            },
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),
     );
   }
-}
-
-class _StatusTag extends StatelessWidget {
-  const _StatusTag({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: .12),
-      borderRadius: BorderRadius.circular(20),
-    ),
-    child: Row(
-      children: [
-        Icon(Icons.circle, size: 6, color: color),
-        const SizedBox(width: 5),
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            letterSpacing: .8,
-            fontSize: 8,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ],
-    ),
-  );
 }
 
 class _RatingAction extends StatelessWidget {
